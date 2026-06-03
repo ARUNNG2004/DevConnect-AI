@@ -1,0 +1,29 @@
+{
+  "name": "devconnect-ai",
+  "version": "1.0.0",
+  "description": "> Build. Collaborate. Grow. Powered by AI.",
+  "main": "index.js",
+ "scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "lint": "next lint"
+},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OmkarHase-11/DevConnect-AI.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/OmkarHase-11/DevConnect-AI/issues"
+  },
+  "homepage": "https://github.com/OmkarHase-11/DevConnect-AI#readme",
+  "dependencies": {
+    "next": "^16.2.7",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  }
+}
