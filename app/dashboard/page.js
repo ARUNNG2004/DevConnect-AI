@@ -1,19 +1,85 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Navbar from "../../components/Navbar";
 import ProtectedRoute from "../../components/ProtectedRoute";
+import { useAuth } from "../../context/AuthContext";
+import { db } from "../../lib/firebase";
+import {
+  collection,
+  addDoc,
+  query,
+  orderBy,
+  onSnapshot,
+  serverTimestamp,
+} from "firebase/firestore";
 
 export default function Dashboard() {
+  const { user } = useAuth();
+
+  const [content, setContent] = useState("");
+  const [posts, setPosts] = useState([]);
+  const [error, setError] = useState("");
+  const [posting, setPosting] = useState(false);
+
+  useEffect(() => {
+    const postsQuery = query(
+      collection(db, "posts"),
+      orderBy("timestamp", "desc")
+    );
+
+    const unsubscribe = onSnapshot(
+      postsQuery,
+      (snapshot) => {
+        const fetchedPosts = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        setPosts(fetchedPosts);
+      },
+      (err) => {
+        console.error(err);
+        setError("Failed to load posts.");
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleCreatePost = async () => {
+    if (!content.trim() || !user) return;
+
+    try {
+      setPosting(true);
+      setError("");
+
+      await addDoc(collection(db, "posts"), {
+        uid: user.uid,
+        displayName: user.displayName || user.email || "Anonymous User",
+        photoURL: user.photoURL || "",
+        content: content.trim(),
+        timestamp: serverTimestamp(),
+        likes: 0,
+        comments: [],
+      });
+
+      setContent("");
+    } catch (err) {
+      console.error(err);
+      setError("Failed to create post. Please try again.");
+    } finally {
+      setPosting(false);
+    }
+  };
+
   return (
     <ProtectedRoute>
       <main id="app-dashboard-view">
         <div className="app-container">
-
-          {/* ── Navbar ── */}
           <Navbar variant="dashboard" />
 
-          {/* ── Main Layout ── */}
           <div className="main-layout">
-
-            {/* ── Left Sidebar ── */}
             <aside className="left-sidebar">
               <ul className="sidebar-nav-list">
                 <li className="sidebar-nav-item active">
@@ -65,15 +131,19 @@ export default function Dashboard() {
               </div>
             </aside>
 
-            {/* ── Feed Column ── */}
             <section className="feed-column">
               <div className="composer-card">
                 <div className="composer-header">
-                  <div className="avatar">ME</div>
+                  <div className="avatar">
+                    {user?.displayName?.charAt(0)?.toUpperCase() || "ME"}
+                  </div>
+
                   <div className="composer-input-wrapper">
                     <textarea
                       className="composer-textarea"
                       placeholder="Share a coding question, project idea, or debugging help..."
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
                     ></textarea>
                   </div>
                 </div>
@@ -86,18 +156,32 @@ export default function Dashboard() {
                   <span className="tag-badge">#css</span>
                 </div>
 
+                {error && <p style={{ color: "red", marginTop: "10px" }}>{error}</p>}
+
                 <div className="composer-actions">
                   <div className="composer-tools">
-                    <button className="composer-tool-btn" title="Add Image">🖼️</button>
-                    <button className="composer-tool-btn" title="Insert Code">{"</>"}</button>
+                    <button className="composer-tool-btn" title="Add Image">
+                      🖼️
+                    </button>
+                    <button className="composer-tool-btn" title="Insert Code">
+                      {"</>"}
+                    </button>
                   </div>
+
                   <label className="ai-helper-toggle">
                     <input type="checkbox" defaultChecked />
                     <div className="ai-switch"></div>
                     <span>Draft with AI Assistant</span>
                     <span className="pulse-point"></span>
                   </label>
-                  <button className="btn-post">Post Discussion</button>
+
+                  <button
+                    className="btn-post"
+                    onClick={handleCreatePost}
+                    disabled={posting || !content.trim()}
+                  >
+                    {posting ? "Posting..." : "Post Discussion"}
+                  </button>
                 </div>
               </div>
 
@@ -108,101 +192,81 @@ export default function Dashboard() {
                 <button className="filter-tab">Collaborations</button>
               </div>
 
-              <div id="posts-container" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-                <article className="discussion-card" data-category="question">
-                  <div className="card-header">
-                    <div className="author-info">
-                      <div className="author-avatar" style={{ background: "linear-gradient(135deg, #ec4899, #f43f5e)" }}>SJ</div>
-                      <div className="author-meta">
-                        <span className="author-name">Sarah Jenkins</span>
-                        <span className="author-title">Staff Software Engineer • Vercel</span>
+              <div
+                id="posts-container"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "20px",
+                }}
+              >
+                {posts.length === 0 ? (
+                  <p>No posts yet. Create the first post!</p>
+                ) : (
+                  posts.map((post) => (
+                    <article className="discussion-card" key={post.id}>
+                      <div className="card-header">
+                        <div className="author-info">
+                          <div className="author-avatar">
+                            {post.displayName?.charAt(0)?.toUpperCase() || "U"}
+                          </div>
+
+                          <div className="author-meta">
+                            <span className="author-name">
+                              {post.displayName || "Anonymous User"}
+                            </span>
+                            <span className="author-title">Community Member</span>
+                          </div>
+                        </div>
+
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                          }}
+                        >
+                          <span className="category-tag">Discussion</span>
+                          <span className="post-timestamp">
+                            {post.timestamp?.toDate
+                              ? post.timestamp.toDate().toLocaleString()
+                              : "Just now"}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span className="category-tag">Question</span>
-                      <span className="post-timestamp">2h ago</span>
-                    </div>
-                  </div>
 
-                  <h2 className="post-title">
-                    React 19 Server Components re-rendering infinitely on query changes?
-                  </h2>
+                      <h2 className="post-title">Community Discussion</h2>
 
-                  <div className="post-body">
-                    <p>
-                      Hey everyone, I am hitting a strange behavior in Next.js App Router.
-                      When I call router.push from a Client Component inside a Server Component
-                      wrapper, it re-fetches the entire page layout twice, leading to state loss.
-                    </p>
-                    <div className="code-block-wrapper">
-                      <div className="code-header">
-                        <span className="code-lang">tsx</span>
-                        <button className="btn-copy-code">Copy</button>
+                      <div className="post-body">
+                        <p>{post.content}</p>
                       </div>
-                      <pre className="code-content">
-                        <code>{`// app/feed/page.tsx\nexport default async function FeedPage({ searchParams }) {\n  const data = await fetchData(searchParams.query);\n\n  return (\n    <div>\n      <FilterTabs />\n      <FeedList items={data.items} />\n    </div>\n  );\n}`}</code>
-                      </pre>
-                    </div>
-                    <p>Has anyone encountered this state resetting? What is the best way to handle localized page parameter updates?</p>
-                  </div>
 
-                  <div className="post-tags">
-                    <a href="#" className="post-tag">#react</a>
-                    <a href="#" className="post-tag">#nextjs</a>
-                    <a href="#" className="post-tag">#typescript</a>
-                  </div>
-
-                  <div className="post-actions">
-                    <div className="post-actions-group">
-                      <button className="btn-action btn-like">♡ <span className="like-count">42</span> Likes</button>
-                      <button className="btn-action btn-toggle-comments">💬 <span>1 Comment</span></button>
-                    </div>
-                    <button className="btn-action btn-save">🔖 Save</button>
-                  </div>
-                </article>
-
-                <article className="discussion-card" data-category="collaboration">
-                  <div className="card-header">
-                    <div className="author-info">
-                      <div className="author-avatar" style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}>ER</div>
-                      <div className="author-meta">
-                        <span className="author-name">Elena Rostova</span>
-                        <span className="author-title">Core Maintainer • AetherDB</span>
+                      <div className="post-tags">
+                        <a href="#" className="post-tag">
+                          #community
+                        </a>
                       </div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span className="category-tag">Collaboration</span>
-                      <span className="post-timestamp">5h ago</span>
-                    </div>
-                  </div>
 
-                  <h2 className="post-title">
-                    Looking for Rust contributors for AetherDB - Edge Vector Database
-                  </h2>
+                      <div className="post-actions">
+                        <div className="post-actions-group">
+                          <button className="btn-action btn-like">
+                            ♡ <span className="like-count">{post.likes || 0}</span>{" "}
+                            Likes
+                          </button>
+                          <button className="btn-action btn-toggle-comments">
+                            💬{" "}
+                            <span>{post.comments?.length || 0} Comments</span>
+                          </button>
+                        </div>
 
-                  <div className="post-body">
-                    <p>We are building AetherDB, a lightweight embedded Vector Database designed for Edge and IoT runtimes using Rust and WebAssembly.</p>
-                    <p>We need help implementing node quantization filters and HNSW graph query indexing.</p>
-                  </div>
-
-                  <div className="post-tags">
-                    <a href="#" className="post-tag">#rust</a>
-                    <a href="#" className="post-tag">#webassembly</a>
-                    <a href="#" className="post-tag">#database</a>
-                  </div>
-
-                  <div className="post-actions">
-                    <div className="post-actions-group">
-                      <button className="btn-action btn-like">♡ <span className="like-count">89</span> Likes</button>
-                      <button className="btn-action btn-toggle-comments">💬 <span>2 Comments</span></button>
-                    </div>
-                    <button className="btn-action btn-save">🔖 Save</button>
-                  </div>
-                </article>
+                        <button className="btn-action btn-save">🔖 Save</button>
+                      </div>
+                    </article>
+                  ))
+                )}
               </div>
             </section>
 
-            {/* ── Right Sidebar ── */}
             <aside className="right-sidebar">
               <div className="sidebar-widget ai-promo-widget">
                 <h3 className="widget-title">
@@ -210,8 +274,8 @@ export default function Dashboard() {
                   <span className="pulse-point"></span>
                 </h3>
                 <p className="ai-promo-text">
-                  Let AI review your code changes, suggest performance improvements,
-                  and write documentation snippets.
+                  Let AI review your code changes, suggest performance
+                  improvements, and write documentation snippets.
                 </p>
                 <button className="btn-ai-cta">
                   <span>Ask for AI Code Review</span>
@@ -222,15 +286,24 @@ export default function Dashboard() {
                 <h3 className="widget-title">Trending Tags</h3>
                 <div className="trending-list">
                   <div className="trending-item">
-                    <a href="#" className="trending-link"><span>#react</span><span>240 posts</span></a>
+                    <a href="#" className="trending-link">
+                      <span>#react</span>
+                      <span>240 posts</span>
+                    </a>
                     <span className="trending-stats">+24 new today</span>
                   </div>
                   <div className="trending-item">
-                    <a href="#" className="trending-link"><span>#rust</span><span>182 posts</span></a>
+                    <a href="#" className="trending-link">
+                      <span>#rust</span>
+                      <span>182 posts</span>
+                    </a>
                     <span className="trending-stats">+12 new today</span>
                   </div>
                   <div className="trending-item">
-                    <a href="#" className="trending-link"><span>#ai-agents</span><span>110 posts</span></a>
+                    <a href="#" className="trending-link">
+                      <span>#ai-agents</span>
+                      <span>110 posts</span>
+                    </a>
                     <span className="trending-stats">+38 new today</span>
                   </div>
                 </div>
@@ -241,7 +314,17 @@ export default function Dashboard() {
                 <div className="members-list">
                   <div className="member-item">
                     <div className="member-meta">
-                      <div className="avatar" style={{ width: 28, height: 28, fontSize: "0.75rem", background: "linear-gradient(135deg, #ec4899, #f43f5e)" }}>SJ</div>
+                      <div
+                        className="avatar"
+                        style={{
+                          width: 28,
+                          height: 28,
+                          fontSize: "0.75rem",
+                          background: "linear-gradient(135deg, #ec4899, #f43f5e)",
+                        }}
+                      >
+                        SJ
+                      </div>
                       <div>
                         <div className="member-name">Sarah Jenkins</div>
                         <div className="member-role">Vercel</div>
@@ -255,7 +338,17 @@ export default function Dashboard() {
 
                   <div className="member-item">
                     <div className="member-meta">
-                      <div className="avatar" style={{ width: 28, height: 28, fontSize: "0.75rem", background: "linear-gradient(135deg, #10b981, #059669)" }}>ER</div>
+                      <div
+                        className="avatar"
+                        style={{
+                          width: 28,
+                          height: 28,
+                          fontSize: "0.75rem",
+                          background: "linear-gradient(135deg, #10b981, #059669)",
+                        }}
+                      >
+                        ER
+                      </div>
                       <div>
                         <div className="member-name">Elena Rostova</div>
                         <div className="member-role">AetherDB</div>
@@ -269,7 +362,6 @@ export default function Dashboard() {
                 </div>
               </div>
             </aside>
-
           </div>
         </div>
       </main>
