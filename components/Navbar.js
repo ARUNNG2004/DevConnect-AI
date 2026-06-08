@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
@@ -9,7 +8,6 @@ import { Search, Sparkles, Bell, LogOut } from "lucide-react";
 export default function Navbar({ variant = "landing" }) {
   const { user, logout } = useAuth();
   const router = useRouter();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -24,26 +22,75 @@ export default function Navbar({ variant = "landing" }) {
   if (variant === "landing") {
     return (
       <nav id="landing-nav">
-        <Link href="/" className="logo" onClick={() => setIsMenuOpen(false)}>
+        <Link href="/" className="logo">
+          <div className="logo-icon">🧠</div>
           <span>DevConnect AI</span>
         </Link>
 
-        <button
-          className="mobile-menu-toggle"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          aria-label="Toggle navigation menu"
-        >
-          {isMenuOpen ? "✕" : "☰"}
-        </button>
+        <div className="nav-links" id="nav-menu">
+          <a href="#features">AI Showcase</a>
+          <a href="#workflow">How It Works</a>
+          <a href="#stats">Dashboard</a>
+          <a href="#waitlist">Waitlist</a>
 
-        <div className={`nav-links ${isMenuOpen ? "active" : ""}`} id="nav-menu">
-          <a href="/#features" onClick={() => setIsMenuOpen(false)}>AI Showcase</a>
-          <a href="/#workflow" onClick={() => setIsMenuOpen(false)}>How It Works</a>
-          <a href="/#stats" onClick={() => setIsMenuOpen(false)}>Stats</a>
-          <a href="/#waitlist" onClick={() => setIsMenuOpen(false)}>Waitlist</a>
-          <Link href="/dashboard" className="btn-brutalist-nav" onClick={() => setIsMenuOpen(false)}>
-            Open Community App
-          </Link>
+          {user ? (
+            // Logged in — show Dashboard + Profile
+            <>
+              <Link href="/dashboard" className="btn-nav-cta">
+                Open Community App
+              </Link>
+              <Link
+                href="/profile"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  color: "var(--text-secondary)",
+                  fontWeight: 500,
+                  fontSize: "0.95rem",
+                  textDecoration: "none",
+                }}
+              >
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt={user.displayName}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: "var(--radius-full)",
+                      border: "2px solid var(--border-color)",
+                      objectFit: "cover",
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: "var(--radius-full)",
+                      background:
+                        "linear-gradient(135deg, var(--accent-primary), var(--accent-ai))",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                      color: "#000",
+                    }}
+                  >
+                    {user.displayName?.charAt(0).toUpperCase() || "U"}
+                  </div>
+                )}
+                <span>{user.displayName?.split(" ")[0]}</span>
+              </Link>
+            </>
+          ) : (
+            // Not logged in — show Login
+            <Link href="/login" className="btn-nav-cta">
+              Sign In
+            </Link>
+          )}
         </div>
       </nav>
     );
@@ -53,7 +100,7 @@ export default function Navbar({ variant = "landing" }) {
   return (
     <header className="dashboard-nav">
       <Link href="/" className="nav-brand" title="Back to Home">
-        <span>DevConnect AI</span>
+        <span>🧠 DevConnect AI</span>
       </Link>
 
       <div className="nav-search">
