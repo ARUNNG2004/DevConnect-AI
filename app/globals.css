@@ -70,6 +70,11 @@ body {
   box-sizing: border-box;
 }
 
+html {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   background-color: var(--bg-primary);
   color: var(--text-secondary);
@@ -77,6 +82,12 @@ body {
   line-height: 1.6;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+}
+
+#landing-page-view,
+.app-container {
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* Custom Scrollbar */
@@ -1460,6 +1471,11 @@ select {
   box-sizing: border-box;
 }
 
+html {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   background-color: var(--bg-dark);
   color: var(--text-secondary);
@@ -1468,6 +1484,12 @@ body {
   overflow-x: hidden;
   position: relative;
   -webkit-font-smoothing: antialiased;
+}
+
+#landing-page-view,
+.app-container {
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* Ambient glow blobs in background */
@@ -3706,8 +3728,9 @@ footer {
     position: absolute !important;
     top: 61px !important;
     /* right below navbar border */
-    left: -3px !important;
-    width: calc(100% + 6px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
     background-color: #FFFDF9 !important;
     border-left: 3px solid #000000 !important;
     border-right: 3px solid #000000 !important;
@@ -3955,5 +3978,16 @@ footer {
     left: 57% !important;
     top: 20% !important;
     transform: translate(-50%, -50%) rotate(-10deg) !important;
+  }
+
+  #landing-page-view .hero-heading,
+  #landing-page-view .hero-subtext,
+  #landing-page-view .waitlist-section,
+  #landing-page-view .cta {
+    max-width: 100% !important;
+  }
+
+  #landing-page-view .hero-heading {
+    overflow-wrap: anywhere !important;
   }
 }
