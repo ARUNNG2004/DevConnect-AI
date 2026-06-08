@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
+import { Search, Sparkles, Bell, LogOut } from "lucide-react";
 
 export default function Navbar({ variant = "landing" }) {
   const { user, logout } = useAuth();
@@ -48,15 +49,15 @@ export default function Navbar({ variant = "landing" }) {
     );
   }
 
-  // ─── Dashboard / App Navbar ────────────────────────────────────────────────
+  // ─── Dashboard / App Navbar (Neo-Brutalist) ────────────────────────────────
   return (
-    <header className="navbar">
+    <header className="dashboard-nav">
       <Link href="/" className="nav-brand" title="Back to Home">
         <span>DevConnect AI</span>
       </Link>
 
       <div className="nav-search">
-        <span className="nav-search-icon">🔍</span>
+        <span className="nav-search-icon"><Search size={16} /></span>
         <input
           type="text"
           placeholder="Search discussions, tags, error codes..."
@@ -65,72 +66,47 @@ export default function Navbar({ variant = "landing" }) {
 
       <div className="nav-actions">
         <button className="btn-icon" title="AI Code Review Alerts">
-          ✨
+          <Sparkles size={18} />
         </button>
         <button className="btn-icon" title="Notifications">
-          🔔
+          <Bell size={18} />
         </button>
 
         {user ? (
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {/* Profile Link */}
             <Link
               href="/profile"
               className="user-profile-menu"
               title="View Profile"
-              style={{ textDecoration: "none" }}
             >
               {user.photoURL ? (
-                <img
-                  src={user.photoURL}
-                  alt={user.displayName}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: "var(--radius-full)",
-                    border: "2px solid var(--border-color)",
-                    objectFit: "cover",
-                  }}
-                />
+                <div className="avatar" style={{ overflow: "hidden" }}>
+                  <img
+                    src={user.photoURL}
+                    alt={user.displayName}
+                    style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 0 }}
+                  />
+                </div>
               ) : (
-                <div className="avatar online">
+                <div className="avatar">
                   {user.displayName?.charAt(0).toUpperCase() || "U"}
                 </div>
               )}
-              <span
-                style={{
-                  color: "var(--text-primary)",
-                  fontWeight: 600,
-                  fontSize: "0.9rem",
-                }}
-              >
+              <span className="user-profile-name">
                 {user.displayName?.split(" ")[0] || "Profile"}
               </span>
             </Link>
 
-            {/* Logout */}
             <button
               onClick={handleLogout}
               className="btn-icon"
               title="Logout"
-              style={{ fontSize: "1rem" }}
             >
-              🚪
+              <LogOut size={18} />
             </button>
           </div>
         ) : (
-          <Link
-            href="/login"
-            style={{
-              padding: "8px 16px",
-              background: "var(--accent-primary)",
-              color: "#000",
-              borderRadius: "var(--radius-md)",
-              fontWeight: 600,
-              fontSize: "0.9rem",
-              textDecoration: "none",
-            }}
-          >
+          <Link href="/login" className="btn-signin">
             Sign In
           </Link>
         )}

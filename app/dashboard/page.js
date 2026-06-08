@@ -1,64 +1,71 @@
+"use client";
+
 import Navbar from "../../components/Navbar";
 import ProtectedRoute from "../../components/ProtectedRoute";
+import {
+  LayoutDashboard,
+  TrendingUp,
+  HelpCircle,
+  Users,
+  Bookmark,
+  Info,
+  Image,
+  Code,
+  Heart,
+  MessageCircle,
+} from "lucide-react";
 
 export default function Dashboard() {
   return (
     <ProtectedRoute>
       <main id="app-dashboard-view">
         <div className="app-container">
-
-          {/* ── Navbar ── */}
           <Navbar variant="dashboard" />
 
-          {/* ── Main Layout ── */}
           <div className="main-layout">
-
             {/* ── Left Sidebar ── */}
             <aside className="left-sidebar">
               <ul className="sidebar-nav-list">
                 <li className="sidebar-nav-item active">
                   <a href="#">
-                    <span>▦</span>
+                    <span className="nav-icon"><LayoutDashboard size={18} /></span>
                     <span>Feed</span>
                   </a>
                 </li>
                 <li className="sidebar-nav-item">
                   <a href="#">
-                    <span>📈</span>
+                    <span className="nav-icon"><TrendingUp size={18} /></span>
                     <span>Trending</span>
                   </a>
                 </li>
                 <li className="sidebar-nav-item">
                   <a href="#">
-                    <span>❔</span>
+                    <span className="nav-icon"><HelpCircle size={18} /></span>
                     <span>Questions</span>
                   </a>
                 </li>
                 <li className="sidebar-nav-item">
                   <a href="#">
-                    <span>👥</span>
+                    <span className="nav-icon"><Users size={18} /></span>
                     <span>Collaborations</span>
                   </a>
                 </li>
                 <li className="sidebar-nav-item">
                   <a href="#">
-                    <span>🔖</span>
+                    <span className="nav-icon"><Bookmark size={18} /></span>
                     <span>Saved Posts</span>
                   </a>
                 </li>
                 <li className="sidebar-nav-item">
                   <a href="/">
-                    <span>ℹ️</span>
+                    <span className="nav-icon"><Info size={18} /></span>
                     <span>Features Tour</span>
                   </a>
                 </li>
               </ul>
 
               <div className="sidebar-footer-card">
-                <p>
-                  Get instant AI reviews of your code repositories directly from
-                  GitHub.
-                </p>
+                <p>Get instant AI reviews of your code repositories directly from GitHub.</p>
                 <a href="/#features" className="btn-sidebar-cta">
                   Activate AI Copilot
                 </a>
@@ -88,8 +95,8 @@ export default function Dashboard() {
 
                 <div className="composer-actions">
                   <div className="composer-tools">
-                    <button className="composer-tool-btn" title="Add Image">🖼️</button>
-                    <button className="composer-tool-btn" title="Insert Code">{"</>"}</button>
+                    <button className="composer-tool-btn" title="Add Image"><Image size={18} /></button>
+                    <button className="composer-tool-btn" title="Insert Code"><Code size={18} /></button>
                   </div>
                   <label className="ai-helper-toggle">
                     <input type="checkbox" defaultChecked />
@@ -108,7 +115,7 @@ export default function Dashboard() {
                 <button className="filter-tab">Collaborations</button>
               </div>
 
-              <div id="posts-container" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                 <article className="discussion-card" data-category="question">
                   <div className="card-header">
                     <div className="author-info">
@@ -119,7 +126,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span className="category-tag">Question</span>
+                      <span className="category-tag question">Question</span>
                       <span className="post-timestamp">2h ago</span>
                     </div>
                   </div>
@@ -154,10 +161,10 @@ export default function Dashboard() {
 
                   <div className="post-actions">
                     <div className="post-actions-group">
-                      <button className="btn-action btn-like">♡ <span className="like-count">42</span> Likes</button>
-                      <button className="btn-action btn-toggle-comments">💬 <span>1 Comment</span></button>
+                      <button className="btn-action btn-like"><Heart size={16} /> <span className="like-count">42</span> Likes</button>
+                      <button className="btn-action btn-toggle-comments"><MessageCircle size={16} /> <span>1 Comment</span></button>
                     </div>
-                    <button className="btn-action btn-save">🔖 Save</button>
+                    <button className="btn-action btn-save"><Bookmark size={16} /> Save</button>
                   </div>
                 </article>
 
@@ -171,7 +178,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span className="category-tag">Collaboration</span>
+                      <span className="category-tag collaboration">Collaboration</span>
                       <span className="post-timestamp">5h ago</span>
                     </div>
                   </div>
@@ -193,10 +200,10 @@ export default function Dashboard() {
 
                   <div className="post-actions">
                     <div className="post-actions-group">
-                      <button className="btn-action btn-like">♡ <span className="like-count">89</span> Likes</button>
-                      <button className="btn-action btn-toggle-comments">💬 <span>2 Comments</span></button>
+                      <button className="btn-action btn-like"><Heart size={16} /> <span className="like-count">89</span> Likes</button>
+                      <button className="btn-action btn-toggle-comments"><MessageCircle size={16} /> <span>2 Comments</span></button>
                     </div>
-                    <button className="btn-action btn-save">🔖 Save</button>
+                    <button className="btn-action btn-save"><Bookmark size={16} /> Save</button>
                   </div>
                 </article>
               </div>
@@ -241,7 +248,7 @@ export default function Dashboard() {
                 <div className="members-list">
                   <div className="member-item">
                     <div className="member-meta">
-                      <div className="avatar" style={{ width: 28, height: 28, fontSize: "0.75rem", background: "linear-gradient(135deg, #ec4899, #f43f5e)" }}>SJ</div>
+                      <div className="author-avatar" style={{ width: 32, height: 32, fontSize: "0.75rem", background: "linear-gradient(135deg, #ec4899, #f43f5e)" }}>SJ</div>
                       <div>
                         <div className="member-name">Sarah Jenkins</div>
                         <div className="member-role">Vercel</div>
@@ -255,7 +262,7 @@ export default function Dashboard() {
 
                   <div className="member-item">
                     <div className="member-meta">
-                      <div className="avatar" style={{ width: 28, height: 28, fontSize: "0.75rem", background: "linear-gradient(135deg, #10b981, #059669)" }}>ER</div>
+                      <div className="author-avatar" style={{ width: 32, height: 32, fontSize: "0.75rem", background: "linear-gradient(135deg, #10b981, #059669)" }}>ER</div>
                       <div>
                         <div className="member-name">Elena Rostova</div>
                         <div className="member-role">AetherDB</div>
@@ -269,7 +276,6 @@ export default function Dashboard() {
                 </div>
               </div>
             </aside>
-
           </div>
         </div>
       </main>

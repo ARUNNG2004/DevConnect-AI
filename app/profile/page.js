@@ -4,26 +4,29 @@ import { useAuth } from "../../context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
+import { Mail, Shield, CheckCircle, Fingerprint, LogOut, FileText } from "lucide-react";
+
+const BYPASS_AUTH = process.env.NEXT_PUBLIC_BYPASS_AUTH === "true";
 
 export default function Profile() {
   const { user, logout, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!BYPASS_AUTH && !loading && !user) {
       router.push("/login");
     }
   }, [user, loading, router]);
 
-  if (loading) {
+  if (!BYPASS_AUTH && loading) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-primary)" }}>
-        <p style={{ color: "var(--text-muted)" }}>Loading...</p>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FFFDF9" }}>
+        <p style={{ color: "#6b7280", fontWeight: 600 }}>Loading...</p>
       </div>
     );
   }
 
-  if (!user) return null;
+  if (!BYPASS_AUTH && !user) return null;
 
   const handleLogout = async () => {
     try {
@@ -42,69 +45,47 @@ export default function Profile() {
     : "Recently";
 
   return (
-    <main style={{ minHeight: "100vh", background: "var(--bg-primary)" }}>
-
-      {/* Navbar */}
-      <header className="navbar">
+    <main id="app-dashboard-view" style={{ minHeight: "100vh" }}>
+      <header className="dashboard-nav">
         <Link href="/dashboard" className="nav-brand">
-          <span>🧠 DevConnect AI</span>
+          <span>DevConnect AI</span>
         </Link>
         <div className="nav-actions">
-          <Link href="/dashboard" style={{
-            padding: "8px 16px",
-            background: "var(--accent-primary-alpha)",
-            color: "var(--accent-primary)",
-            borderRadius: "var(--radius-md)",
-            fontWeight: 600,
-            fontSize: "0.9rem",
-            textDecoration: "none",
-          }}>
-            ← Dashboard
+          <Link
+            href="/dashboard"
+            className="btn-sidebar-cta"
+            style={{ padding: "8px 20px", fontSize: "0.85rem", display: "inline-flex", textDecoration: "none" }}
+          >
+            Dashboard
           </Link>
           <button
             onClick={handleLogout}
             className="btn-icon"
             title="Logout"
-            style={{ width: "auto", padding: "0 14px", gap: 6, display: "flex", alignItems: "center" }}
+            style={{ width: "auto", padding: "0 14px", gap: 6, display: "flex", alignItems: "center", fontSize: "0.85rem", fontWeight: 600 }}
           >
-            🚪 Logout
+            <LogOut size={16} /> Logout
           </button>
         </div>
       </header>
 
-      {/* Profile Content */}
       <div style={{ maxWidth: 720, margin: "40px auto", padding: "0 24px" }}>
-
-        {/* Profile Card */}
         <div className="composer-card" style={{ padding: 32, gap: 24 }}>
-
-          {/* Avatar + Name */}
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
             {user.photoURL ? (
-              <img
-                src={user.photoURL}
-                alt={user.displayName}
-                style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: "var(--radius-full)",
-                  border: "3px solid var(--border-color)",
-                  objectFit: "cover",
-                }}
-              />
+              <div className="author-avatar" style={{ width: 80, height: 80, overflow: "hidden", borderRadius: "12px !important" }}>
+                <img
+                  src={user.photoURL}
+                  alt={user.displayName}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 0 }}
+                />
+              </div>
             ) : (
-              <div style={{
+              <div className="author-avatar" style={{
                 width: 80,
                 height: 80,
-                borderRadius: "var(--radius-full)",
-                background: "linear-gradient(135deg, var(--accent-primary), var(--accent-ai))",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "1.8rem",
-                fontWeight: 700,
-                color: "#000",
-                border: "3px solid var(--border-color)",
+                fontSize: "2rem",
+                background: "linear-gradient(135deg, #00875A, #E07A1B)"
               }}>
                 {user.displayName?.charAt(0).toUpperCase() || "U"}
               </div>
@@ -112,51 +93,50 @@ export default function Profile() {
 
             <div style={{ flex: 1 }}>
               <h1 style={{
-                color: "var(--text-primary)",
+                color: "#111111",
                 fontSize: "1.6rem",
                 fontWeight: 700,
                 marginBottom: 4,
+                fontFamily: "'Oswald', sans-serif",
+                textTransform: "uppercase"
               }}>
                 {user.displayName || "Anonymous Developer"}
               </h1>
-              <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
+              <p style={{ color: "#6b7280", fontSize: "0.9rem", fontWeight: 500 }}>
                 Joined {joinedDate}
               </p>
             </div>
           </div>
 
-          {/* Divider */}
-          <div style={{ borderTop: "1px solid var(--border-color)" }} />
+          <div style={{ borderTop: "2px solid #000000" }} />
 
-          {/* Info Grid */}
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: "1.1rem" }}>📧</span>
+              <Mail size={20} style={{ color: "#4b5563", flexShrink: 0 }} />
               <div>
-                <p style={{ color: "var(--text-muted)", fontSize: "0.75rem", marginBottom: 2 }}>Email</p>
-                <p style={{ color: "var(--text-primary)", fontSize: "0.95rem" }}>{user.email}</p>
+                <p style={{ color: "#6b7280", fontSize: "0.75rem", marginBottom: 2, fontWeight: 600 }}>Email</p>
+                <p style={{ color: "#111111", fontSize: "0.95rem", fontWeight: 500 }}>{user.email}</p>
               </div>
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: "1.1rem" }}>🔐</span>
+              <Shield size={20} style={{ color: "#4b5563", flexShrink: 0 }} />
               <div>
-                <p style={{ color: "var(--text-muted)", fontSize: "0.75rem", marginBottom: 2 }}>Sign-in Provider</p>
-                <p style={{ color: "var(--text-primary)", fontSize: "0.95rem", textTransform: "capitalize" }}>
+                <p style={{ color: "#6b7280", fontSize: "0.75rem", marginBottom: 2, fontWeight: 600 }}>Sign-in Provider</p>
+                <p style={{ color: "#111111", fontSize: "0.95rem", fontWeight: 500, textTransform: "capitalize" }}>
                   {user.providerData?.[0]?.providerId?.replace(".com", "") || "Unknown"}
                 </p>
               </div>
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: "1.1rem" }}>✅</span>
+              <CheckCircle size={20} style={{ color: user.emailVerified ? "#00875A" : "#E07A1B", flexShrink: 0 }} />
               <div>
-                <p style={{ color: "var(--text-muted)", fontSize: "0.75rem", marginBottom: 2 }}>Email Verified</p>
+                <p style={{ color: "#6b7280", fontSize: "0.75rem", marginBottom: 2, fontWeight: 600 }}>Email Verified</p>
                 <p style={{
-                  color: user.emailVerified ? "var(--accent-success)" : "var(--accent-warning)",
+                  color: user.emailVerified ? "#00875A" : "#E07A1B",
                   fontSize: "0.95rem",
-                  fontWeight: 600,
+                  fontWeight: 700,
                 }}>
                   {user.emailVerified ? "Verified" : "Not Verified"}
                 </p>
@@ -164,55 +144,56 @@ export default function Profile() {
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: "1.1rem" }}>🪪</span>
+              <Fingerprint size={20} style={{ color: "#4b5563", flexShrink: 0 }} />
               <div>
-                <p style={{ color: "var(--text-muted)", fontSize: "0.75rem", marginBottom: 2 }}>User ID</p>
+                <p style={{ color: "#6b7280", fontSize: "0.75rem", marginBottom: 2, fontWeight: 600 }}>User ID</p>
                 <p style={{
-                  color: "var(--text-secondary)",
+                  color: "#4b5563",
                   fontSize: "0.8rem",
-                  fontFamily: "var(--font-mono)",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontWeight: 500,
                   wordBreak: "break-all",
                 }}>
                   {user.uid}
                 </p>
               </div>
             </div>
-
           </div>
 
-          {/* Divider */}
-          <div style={{ borderTop: "1px solid var(--border-color)" }} />
+          <div style={{ borderTop: "2px solid #000000" }} />
 
-          {/* Logout Button */}
           <button
             onClick={handleLogout}
             style={{
               width: "100%",
               padding: "12px",
-              background: "rgba(239, 68, 68, 0.1)",
-              border: "1px solid rgba(239, 68, 68, 0.3)",
-              borderRadius: "var(--radius-md)",
-              color: "#ef4444",
-              fontWeight: 600,
+              background: "#ef4444",
+              border: "2.5px solid #000000",
+              borderRadius: "12px",
+              color: "#ffffff",
+              fontWeight: 700,
               fontSize: "0.95rem",
               cursor: "pointer",
-              transition: "all 0.15s ease",
+              boxShadow: "4px 4px 0px #000000",
+              transition: "all 0.1s ease",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
             }}
-            onMouseEnter={e => e.target.style.background = "rgba(239, 68, 68, 0.2)"}
-            onMouseLeave={e => e.target.style.background = "rgba(239, 68, 68, 0.1)"}
+            onMouseEnter={e => { e.target.style.transform = "translate(-2px, -2px)"; e.target.style.boxShadow = "6px 6px 0px #000000"; }}
+            onMouseLeave={e => { e.target.style.transform = ""; e.target.style.boxShadow = ""; }}
           >
-            🚪 Sign Out
+            <LogOut size={18} /> Sign Out
           </button>
-
         </div>
 
-        {/* Coming Soon Card */}
         <div className="composer-card" style={{ padding: 24, marginTop: 20, textAlign: "center" }}>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
-            📝 Your posts, saved items, and activity will appear here soon.
+          <FileText size={24} style={{ color: "#6b7280", marginBottom: 8, display: "inline-block" }} />
+          <p style={{ color: "#6b7280", fontSize: "0.9rem", fontWeight: 500 }}>
+            Your posts, saved items, and activity will appear here soon.
           </p>
         </div>
-
       </div>
     </main>
   );
