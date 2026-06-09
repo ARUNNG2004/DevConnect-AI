@@ -62,8 +62,8 @@ export async function POST(request) {
     
     // Generate fixed code
     let fixedCode = code;
-    fixedCode = fixedCode.replace(/var\s+/g, 'const ');
-    fixedCode = fixedCode.replace(/console\.log\(.*?\)/g, '// console.log removed');
+    fixedCode = fixedCode.replace(/var\s+/g, 'let ');
+    fixedCode = fixedCode.replace(/console\.log\(([\s\S]*?)\)/g, 'void 0 /* console.log removed */');
     
     return Response.json({
       success: true,
