@@ -23,24 +23,28 @@ export async function POST(request) {
     // Detect issues
     const issues = [];
     
+    // Strip comments first to avoid false positives inside comments
+    const cleanCode = code.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
+    
     // Security issues
-    if (/eval\(/g.test(code)) {
+    if (/eval\(/g.test(cleanCode)) {
       issues.push({ type: 'security', severity: 'Critical', message: 'Never use eval() - security risk' });
     }
-    if (/innerHTML\s*=/g.test(code)) {
+    if (/innerHTML\s*=/g.test(cleanCode)) {
       issues.push({ type: 'security', severity: 'High', message: 'innerHTML can cause XSS attacks' });
     }
     
     // Performance issues
-    if (/for\s*\(.*\)\s*{.*for\s*\(.*\)/gs.test(code)) {
+    if (/for\s*\([^)]*\)\s*\{[^{}]*for\s*\([^)]*\)/s.test(cleanCode) ||
+        /for\s*\([^)]*\)\s*(?!\{)\s*for\s*\([^)]*\)/s.test(cleanCode)) {
       issues.push({ type: 'performance', severity: 'Medium', message: 'Nested loops - O(n²) complexity' });
     }
     
     // Best practices
-    if (/var\s+/g.test(code)) {
+    if (/var\s+/g.test(cleanCode)) {
       issues.push({ type: 'best_practice', severity: 'Low', message: 'Use const/let instead of var' });
     }
-    if (/console\.log/g.test(code)) {
+    if (/console\.log/g.test(cleanCode)) {
       issues.push({ type: 'best_practice', severity: 'Low', message: 'Remove console.log in production' });
     }
     
@@ -62,8 +66,8 @@ export async function POST(request) {
     
     // Generate fixed code
     let fixedCode = code;
-    fixedCode = fixedCode.replace(/var\s+/g, 'const ');
-    fixedCode = fixedCode.replace(/console\.log\(.*?\)/g, '// console.log removed');
+    fixedCode = fixedCode.replace(/var\s+/g, 'let ');
+    fixedCode = fixedCode.replace(/console\.log\(([\s\S]*?)\)/g, 'void 0 /* console.log removed */');
     
     return Response.json({
       success: true,
