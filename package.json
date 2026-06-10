@@ -7,7 +7,6 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
     "check:structure": "node scripts/validate-structure.js"
   },
   "repository": {
