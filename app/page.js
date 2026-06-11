@@ -1,7 +1,8 @@
 "use client";
+
 import Link from "next/link";
 import CodeReview from "../components/CodeReview";
-import { useEffect } from "react";
+import { useTheme } from "../context/ThemeContext";
 
 // ── Design tokens (mirroring landing CSS variables) ───────────────────────────
 const C = {
@@ -23,8 +24,8 @@ const C = {
 const S = {
   // page wrapper
   main: {
-    backgroundColor: C.bgDark,
-    color: C.textSecondary,
+    backgroundColor: "var(--bg-primary)",
+    color: "var(--text-secondary)",
     fontFamily: "'Inter', system-ui, sans-serif",
     overflowX: "hidden",
     position: "relative",
@@ -53,22 +54,28 @@ const S = {
     justifyContent: "space-between",
     alignItems: "center",
     padding: "16px 8%",
-    background: "rgba(3,7,18,0.75)",
+    background: "var(--bg-secondary)",
     backdropFilter: "blur(16px)",
     WebkitBackdropFilter: "blur(16px)",
-    borderBottom: `1px solid ${C.border}`,
+    borderBottom: `1px solid var(--border-color)`,
+  },
+  navContent: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
   },
   logo: {
     fontSize: "1.4rem",
     fontWeight: 800,
-    color: C.textPrimary,
+    color: "var(--text-primary)",
     display: "flex",
     alignItems: "center",
     gap: 10,
     textDecoration: "none",
   },
   logoIcon: {
-    background: `linear-gradient(135deg, ${C.blue}, ${C.purple})`,
+    background: `linear-gradient(135deg, var(--accent-primary), var(--accent-ai))`,
     color: "#000",
     width: 32,
     height: 32,
@@ -80,27 +87,57 @@ const S = {
     borderRadius: 8,
     boxShadow: "0 0 15px rgba(56,189,248,0.3)",
   },
+  navLinksContainer: {
+    display: "flex",
+    alignItems: "center",
+    gap: 32,
+  },
   navLinks: {
     display: "flex",
     alignItems: "center",
     gap: 32,
   },
   navLink: {
-    color: C.textSecondary,
+    color: "var(--text-secondary)",
     textDecoration: "none",
     fontWeight: 500,
     fontSize: "0.95rem",
     padding: "6px 0",
+    cursor: "pointer",
+    transition: "color var(--transition-fast)",
+  },
+  navRightActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+  },
+  themeToggleBtn: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 40,
+    height: 40,
+    background: "var(--bg-primary)",
+    border: "1.5px solid var(--border-color)",
+    borderRadius: "var(--radius-md)",
+    color: "var(--text-primary)",
+    cursor: "pointer",
+    transition: "all var(--transition-fast)",
+    fontSize: "1.2rem",
+    fontWeight: 600,
   },
   btnNavCta: {
     display: "inline-block",
     padding: "10px 20px",
-    background: `linear-gradient(135deg, ${C.blue}, ${C.purple})`,
+    background: `linear-gradient(135deg, var(--accent-primary), var(--accent-ai))`,
     color: "#000",
     fontWeight: 600,
     borderRadius: 8,
     textDecoration: "none",
     boxShadow: "0 4px 15px rgba(56,189,248,0.2)",
+    cursor: "pointer",
+    border: "none",
+    transition: "transform var(--transition-fast)",
   },
   // hero
   hero: {
@@ -118,10 +155,10 @@ const S = {
     alignItems: "center",
     gap: 8,
     padding: "8px 16px",
-    background: "rgba(56,189,248,0.08)",
+    background: "var(--accent-primary-alpha)",
     border: "1px solid rgba(56,189,248,0.2)",
     borderRadius: 9999,
-    color: C.blue,
+    color: "var(--accent-primary)",
     fontWeight: 600,
     fontSize: "0.85rem",
     marginBottom: 24,
@@ -131,7 +168,7 @@ const S = {
   badgeDot: {
     width: 8,
     height: 8,
-    backgroundColor: C.blue,
+    backgroundColor: "var(--accent-primary)",
     borderRadius: 9999,
   },
   heroH1: {
@@ -139,13 +176,13 @@ const S = {
     fontWeight: 800,
     maxWidth: 950,
     lineHeight: 1.15,
-    color: C.textPrimary,
+    color: "var(--text-primary)",
     marginBottom: 24,
     letterSpacing: "-1px",
     margin: "0 0 24px 0",
   },
   heroH1Span: {
-    background: `linear-gradient(90deg, ${C.blue}, ${C.teal} 45%, ${C.purple})`,
+    background: `linear-gradient(90deg, var(--accent-primary), #2dd4bf 45%, var(--accent-ai))`,
     WebkitBackgroundClip: "text",
     WebkitTextFillColor: "transparent",
     backgroundClip: "text",
@@ -153,7 +190,7 @@ const S = {
   heroP: {
     fontSize: "1.2rem",
     maxWidth: 760,
-    color: C.textSecondary,
+    color: "var(--text-secondary)",
     lineHeight: 1.7,
     margin: "0 0 40px 0",
   },
@@ -172,7 +209,7 @@ const S = {
     borderRadius: 14,
     textDecoration: "none",
     cursor: "pointer",
-    background: `linear-gradient(135deg, ${C.blue}, ${C.teal})`,
+    background: `linear-gradient(135deg, var(--accent-primary), #2dd4bf)`,
     color: "#030712",
     boxShadow: "0 8px 25px rgba(56,189,248,0.25)",
     border: "none",
@@ -188,8 +225,8 @@ const S = {
     textDecoration: "none",
     cursor: "pointer",
     background: "rgba(255,255,255,0.03)",
-    color: C.textPrimary,
-    border: `1px solid ${C.border}`,
+    color: "var(--text-primary)",
+    border: `1px solid var(--border-color)`,
   },
   // mockup
   heroMockupWrapper: {
@@ -204,31 +241,31 @@ const S = {
   },
   mockupWindow: {
     width: "100%",
-    background: "#0f172a",
+    background: "var(--bg-secondary)",
     borderRadius: 18,
     overflow: "hidden",
-    border: `1px solid ${C.border}`,
+    border: `1px solid var(--border-color)`,
     textAlign: "left",
   },
   mockupHeader: {
     height: 44,
-    background: "#090d16",
+    background: "var(--bg-primary)",
     display: "flex",
     alignItems: "center",
     padding: "0 16px",
-    borderBottom: `1px solid ${C.border}`,
+    borderBottom: `1px solid var(--border-color)`,
     justifyContent: "space-between",
   },
   mockupDots: { display: "flex", gap: 6 },
   mockupDot: { width: 10, height: 10, borderRadius: 9999 },
   mockupTitle: {
-    fontFamily: C.fontMono,
+    fontFamily: "'JetBrains Mono', monospace",
     fontSize: "0.75rem",
-    color: C.textMuted,
+    color: "var(--text-muted)",
     background: "rgba(255,255,255,0.03)",
     padding: "4px 20px",
     borderRadius: 8,
-    border: `1px solid ${C.border}`,
+    border: `1px solid var(--border-color)`,
   },
   mockupBody: {
     display: "grid",
@@ -236,8 +273,8 @@ const S = {
     height: 380,
   },
   mockupSidebar: {
-    background: "#090d16",
-    borderRight: `1px solid ${C.border}`,
+    background: "var(--bg-primary)",
+    borderRight: `1px solid var(--border-color)`,
     padding: 16,
     display: "flex",
     flexDirection: "column",
@@ -247,12 +284,12 @@ const S = {
     height: 36,
     borderRadius: 8,
     background: "rgba(255,255,255,0.03)",
-    border: `1px solid ${C.border}`,
+    border: `1px solid var(--border-color)`,
   },
   mockupSidebarItemActive: {
     height: 36,
     borderRadius: 8,
-    background: "rgba(56,189,248,0.08)",
+    background: "var(--accent-primary-alpha)",
     border: `1px solid rgba(56,189,248,0.2)`,
   },
   mockupMain: {
@@ -268,22 +305,22 @@ const S = {
     width: 32,
     height: 32,
     borderRadius: 9999,
-    background: `linear-gradient(135deg, ${C.blue}, ${C.purple})`,
+    background: `linear-gradient(135deg, var(--accent-primary), var(--accent-ai))`,
     flexShrink: 0,
   },
   mockupMeta: { flex: 1, display: "flex", flexDirection: "column", gap: 4 },
   mockupLineSm: { height: 8, background: "rgba(255,255,255,0.08)", borderRadius: 2 },
   mockupCodeCard: {
-    fontFamily: C.fontMono,
-    background: "#050b14",
-    border: `1px solid ${C.border}`,
+    fontFamily: "'JetBrains Mono', monospace",
+    background: "var(--bg-primary)",
+    border: `1px solid var(--border-color)`,
     borderRadius: 8,
     padding: 12,
     fontSize: "0.8rem",
     color: "#e2e8f0",
   },
   mockupAiCard: {
-    border: `1px solid ${C.purple}`,
+    border: `1px solid var(--accent-ai)`,
     background: "rgba(192,132,252,0.05)",
     borderRadius: 14,
     padding: 12,
@@ -298,7 +335,7 @@ const S = {
     padding: "2px 8px",
     borderRadius: 8,
     fontSize: "0.7rem",
-    color: C.purple,
+    color: "#c084fc",
     fontWeight: 700,
     marginBottom: 8,
   },
@@ -308,20 +345,20 @@ const S = {
   sectionTitleH2: {
     fontSize: "2.8rem",
     fontWeight: 800,
-    color: C.textPrimary,
+    color: "var(--text-primary)",
     marginBottom: 16,
     letterSpacing: "-0.5px",
     margin: "0 0 16px 0",
   },
   sectionTitleSpan: {
-    background: `linear-gradient(90deg, ${C.blue}, ${C.purple})`,
+    background: `linear-gradient(90deg, var(--accent-primary), var(--accent-ai))`,
     WebkitBackgroundClip: "text",
     WebkitTextFillColor: "transparent",
     backgroundClip: "text",
   },
   sectionTitleP: {
     fontSize: "1.1rem",
-    color: C.textSecondary,
+    color: "var(--text-secondary)",
     maxWidth: 600,
     margin: "0 auto",
   },
@@ -333,8 +370,8 @@ const S = {
     marginBottom: 60,
   },
   featureCard: {
-    background: C.bgCard,
-    border: `1px solid ${C.border}`,
+    background: "var(--bg-secondary)",
+    border: `1px solid var(--border-color)`,
     borderRadius: 14,
     padding: 40,
     backdropFilter: "blur(16px)",
@@ -347,7 +384,7 @@ const S = {
     width: 54,
     height: 54,
     borderRadius: 8,
-    background: "rgba(56,189,248,0.1)",
+    background: "var(--accent-primary-alpha)",
     border: "1px solid rgba(56,189,248,0.2)",
     display: "flex",
     alignItems: "center",
@@ -358,15 +395,15 @@ const S = {
     width: 54,
     height: 54,
     borderRadius: 8,
-    background: "rgba(192,132,252,0.1)",
-    border: "1px solid rgba(192,132,252,0.2)",
+    background: "var(--accent-ai-alpha)",
+    border: "1px solid rgba(192,132,252,0.3)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontSize: "1.5rem",
   },
-  featureCardH3: { fontSize: "1.4rem", fontWeight: 700, color: C.textPrimary, margin: 0 },
-  featureCardP: { color: C.textSecondary, fontSize: "0.95rem", lineHeight: 1.6, margin: 0 },
+  featureCardH3: { fontSize: "1.4rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 },
+  featureCardP: { color: "var(--text-secondary)", fontSize: "0.95rem", lineHeight: 1.6, margin: 0 },
   // workflow
   workflowContainer: {
     maxWidth: 900,
@@ -383,27 +420,27 @@ const S = {
     width: 82,
     height: 82,
     borderRadius: 9999,
-    background: C.bgDark,
-    border: `2px solid ${active ? color : C.border}`,
+    background: "var(--bg-primary)",
+    border: `2px solid ${active ? color : "var(--border-color)"}`,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontSize: "1.8rem",
     fontWeight: 800,
-    color: active ? color : C.textMuted,
+    color: active ? color : "var(--text-muted)",
     flexShrink: 0,
-    boxShadow: active ? `0 0 20px ${color}4d, 0 0 0 8px ${C.bgDark}` : `0 0 0 8px ${C.bgDark}`,
+    boxShadow: active ? `0 0 20px ${color}4d, 0 0 0 8px var(--bg-primary)` : `0 0 0 8px var(--bg-primary)`,
   }),
   workflowCard: {
-    background: C.bgCard,
-    border: `1px solid ${C.border}`,
+    background: "var(--bg-secondary)",
+    border: `1px solid var(--border-color)`,
     padding: 30,
     borderRadius: 14,
     backdropFilter: "blur(16px)",
     flexGrow: 1,
   },
-  workflowCardH3: { fontSize: "1.3rem", fontWeight: 700, color: C.textPrimary, margin: "0 0 8px 0" },
-  workflowCardP: { color: C.textSecondary, fontSize: "0.95rem", margin: 0 },
+  workflowCardH3: { fontSize: "1.3rem", fontWeight: 700, color: "var(--text-primary)", margin: "0 0 8px 0" },
+  workflowCardP: { color: "var(--text-secondary)", fontSize: "0.95rem", margin: 0 },
   // stats
   statsDashboard: {
     display: "grid",
@@ -412,27 +449,27 @@ const S = {
     marginBottom: 50,
   },
   statMetricCard: (i) => ({
-    background: C.bgCard,
-    border: `1px solid ${C.border}`,
+    background: "var(--bg-secondary)",
+    border: `1px solid var(--border-color)`,
     padding: "32px 24px",
     borderRadius: 14,
     textAlign: "center",
     backdropFilter: "blur(16px)",
     position: "relative",
     overflow: "hidden",
-    borderTop: `3px solid ${i % 2 === 0 ? C.blue : C.purple}`,
+    borderTop: `3px solid ${i % 2 === 0 ? "var(--accent-primary)" : "var(--accent-ai)"}`,
   }),
   statMetricVal: {
     fontSize: "2.8rem",
     fontWeight: 800,
-    color: C.textPrimary,
+    color: "var(--text-primary)",
     lineHeight: 1,
     marginBottom: 12,
     letterSpacing: "-1px",
   },
   statMetricLabel: {
     fontSize: "0.85rem",
-    color: C.textMuted,
+    color: "var(--text-muted)",
     textTransform: "uppercase",
     fontWeight: 700,
     letterSpacing: "1px",
@@ -444,7 +481,7 @@ const S = {
     alignItems: "center",
     gap: 20,
     background: "rgba(17,24,39,0.4)",
-    border: `1px solid ${C.border}`,
+    border: `1px solid var(--border-color)`,
     padding: "50px 30px",
     borderRadius: 24,
     maxWidth: 760,
@@ -452,22 +489,22 @@ const S = {
     backdropFilter: "blur(16px)",
     textAlign: "center",
   },
-  waitlistH3: { fontSize: "1.8rem", color: C.textPrimary, fontWeight: 800, margin: 0 },
+  waitlistH3: { fontSize: "1.8rem", color: "var(--text-primary)", fontWeight: 800, margin: 0 },
   waitlistH3Span: {
-    background: `linear-gradient(90deg, ${C.blue}, ${C.purple})`,
+    background: `linear-gradient(90deg, var(--accent-primary), var(--accent-ai))`,
     WebkitBackgroundClip: "text",
     WebkitTextFillColor: "transparent",
     backgroundClip: "text",
   },
-  waitlistP: { fontSize: "1rem", color: C.textSecondary, maxWidth: 500, margin: 0 },
+  waitlistP: { fontSize: "1rem", color: "var(--text-secondary)", maxWidth: 500, margin: 0 },
   waitlistForm: { display: "flex", width: "100%", maxWidth: 540, gap: 12, marginTop: 10 },
   waitlistInput: {
     flexGrow: 1,
     padding: "14px 20px",
     background: "rgba(0,0,0,0.3)",
-    border: `1px solid ${C.border}`,
+    border: `1px solid var(--border-color)`,
     borderRadius: 14,
-    color: C.textPrimary,
+    color: "var(--text-primary)",
     outline: "none",
     fontSize: "0.95rem",
     fontFamily: "inherit",
@@ -481,58 +518,71 @@ const S = {
   ctaH2: {
     fontSize: "3rem",
     fontWeight: 800,
-    color: C.textPrimary,
+    color: "var(--text-primary)",
     marginBottom: 16,
     letterSpacing: "-1px",
     margin: "0 0 16px 0",
   },
-  ctaP: { fontSize: "1.1rem", color: C.textSecondary, maxWidth: 600, margin: "0 auto 32px" },
+  ctaP: { fontSize: "1.1rem", color: "var(--text-secondary)", maxWidth: 600, margin: "0 auto 32px" },
   // footer
   footer: {
     textAlign: "center",
     padding: "40px 8%",
-    color: C.textMuted,
+    color: "var(--text-muted)",
     fontSize: "0.9rem",
-    borderTop: `1px solid ${C.border}`,
-    background: "#02050d",
+    borderTop: `1px solid var(--border-color)`,
+    background: "var(--bg-primary)",
   },
 };
 
 export default function Home() {
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const target = params.get("scrollTo");
-
-    if (target) {
-      setTimeout(() => {
-        document.getElementById(target)?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, 300);
-    }
-  }, []);
+  const { isDarkMode, toggleTheme } = useTheme();
 
   return (
     <main style={S.main}>
       {/* Glow blobs */}
-      <div style={{ ...S.glowBlob, top: -100, left: -100, background: `radial-gradient(circle, ${C.blue} 0%, transparent 80%)` }} />
-      <div style={{ ...S.glowBlob, top: "40%", right: -150, background: `radial-gradient(circle, ${C.purple} 0%, transparent 80%)` }} />
-      <div style={{ ...S.glowBlob, bottom: "10%", left: -100, background: `radial-gradient(circle, ${C.teal} 0%, transparent 80%)` }} />
+      <div style={{ ...S.glowBlob, top: -100, left: -100, background: `radial-gradient(circle, var(--accent-primary) 0%, transparent 80%)` }} />
+      <div style={{ ...S.glowBlob, top: "40%", right: -150, background: `radial-gradient(circle, var(--accent-ai) 0%, transparent 80%)` }} />
+      <div style={{ ...S.glowBlob, bottom: "10%", left: -100, background: `radial-gradient(circle, #2dd4bf 0%, transparent 80%)` }} />
 
       {/* ── Navbar ── */}
       <nav style={S.nav}>
-        <Link href="/" style={S.logo}>
-          <div style={S.logoIcon}>🧠</div>
-          <span>DevConnect AI</span>
-        </Link>
-        <div style={S.navLinks}>
-          <a href="#features" style={S.navLink}>AI Showcase</a>
-          <a href="#workflow" style={S.navLink}>How It Works</a>
-          <a href="#stats" style={S.navLink}>Dashboard</a>
-          <a href="#waitlist" style={S.navLink}>Waitlist</a>
-          <Link href="/dashboard" style={S.btnNavCta}>Open Community App</Link>
+        <div style={S.navContent}>
+          <Link href="/" style={S.logo}>
+            <div style={S.logoIcon}>🧠</div>
+            <span>DevConnect AI</span>
+          </Link>
+
+          <div style={S.navLinksContainer}>
+            <div style={S.navLinks}>
+              <a href="#features" style={S.navLink}>AI Showcase</a>
+              <a href="#workflow" style={S.navLink}>How It Works</a>
+              <a href="#stats" style={S.navLink}>Dashboard</a>
+              <a href="#waitlist" style={S.navLink}>Waitlist</a>
+            </div>
+
+            <div style={S.navRightActions}>
+              <button
+                onClick={toggleTheme}
+                style={S.themeToggleBtn}
+                title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "var(--accent-primary-alpha)";
+                  e.currentTarget.style.borderColor = "var(--accent-primary)";
+                  e.currentTarget.style.color = "var(--accent-primary)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "var(--bg-primary)";
+                  e.currentTarget.style.borderColor = "var(--border-color)";
+                  e.currentTarget.style.color = "var(--text-primary)";
+                }}
+              >
+                {isDarkMode ? "☀️" : "🌙"}
+              </button>
+
+              <Link href="/dashboard" style={S.btnNavCta}>Open Community App</Link>
+            </div>
+          </div>
         </div>
       </nav>
 
@@ -593,7 +643,7 @@ export default function Home() {
                   </div>
 
                   <div style={S.mockupCodeCard}>
-                    <span style={{ color: C.textMuted, fontStyle: "italic" }}>
+                    <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
                       {"// App Router re-renders infinitely on state push"}
                     </span>
                     <br />
@@ -601,7 +651,7 @@ export default function Home() {
                     {" handleFilter = (filter) => {"}
                     <br />
                     &nbsp;&nbsp;{"router."}
-                    <span style={{ color: C.purple, borderBottom: `2px dashed ${C.purple}`, paddingBottom: 1 }}>push</span>
+                    <span style={{ color: "var(--accent-ai)", borderBottom: `2px dashed var(--accent-ai)`, paddingBottom: 1 }}>push</span>
                     {"(`?tab=${filter}`);"}
                     <br />
                     {"}"}
@@ -609,8 +659,8 @@ export default function Home() {
 
                   <div style={S.mockupAiCard}>
                     <div style={S.mockupAiBadge}>🤖 DevConnect Copilot</div>
-                    <div style={{ ...S.mockupLineSm, width: "90%", background: C.purple, height: 6, marginBottom: 6 }} />
-                    <div style={{ ...S.mockupLineSm, width: "75%", background: C.purple, height: 6, opacity: 0.7 }} />
+                    <div style={{ ...S.mockupLineSm, width: "90%", background: "var(--accent-ai)", height: 6, marginBottom: 6 }} />
+                    <div style={{ ...S.mockupLineSm, width: "75%", background: "var(--accent-ai)", height: 6, opacity: 0.7 }} />
                   </div>
                 </div>
               </section>
@@ -664,9 +714,9 @@ export default function Home() {
 
         <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", flexDirection: "column", gap: 30 }}>
           {[
-            { num: "01", color: C.blue, title: "Compose Your Discussion", desc: "Draft coding questions, share logs, or start a repository collaboration using markdown, tags, and code blocks.", active: true },
-            { num: "02", color: C.purple, title: "AI Copilot Evaluates", desc: "DevConnect AI suggests corrections, hashtags, and code-review improvements before you post." },
-            { num: "03", color: C.teal, title: "Community Code Verification", desc: "Get responses from developers, resolve comments, and improve your projects faster." },
+            { num: "01", color: "var(--accent-primary)", title: "Compose Your Discussion", desc: "Draft coding questions, share logs, or start a repository collaboration using markdown, tags, and code blocks.", active: true },
+            { num: "02", color: "var(--accent-ai)", title: "AI Copilot Evaluates", desc: "DevConnect AI suggests corrections, hashtags, and code-review improvements before you post." },
+            { num: "03", color: "#2dd4bf", title: "Community Code Verification", desc: "Get responses from developers, resolve comments, and improve your projects faster." },
           ].map(({ num, color, title, desc, active }) => (
             <div key={num} style={S.workflowStep}>
               <div style={S.workflowNum(active, color)}>{num}</div>

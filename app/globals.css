@@ -1,7 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
-/* Design tokens — used by inline styles via CSS variables */
+/* ── Dark Mode Theme ────────────────────────────────────────────────────────── */
+:root[data-theme="dark"],
 :root {
   --bg-primary: #0f172a;
   --bg-secondary: #1e293b;
@@ -38,7 +39,37 @@
   --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-*, *::before, *::after { box-sizing: border-box; }
+/* ── Light Mode Theme ──────────────────────────────────────────────────────── */
+:root[data-theme="light"] {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #f1f5f9;
+  --bg-tertiary: #ffffff;
+  --border-color: #e2e8f0;
+  --border-focus: #0ea5e9;
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+
+  --accent-primary: #0284c7;
+  --accent-primary-hover: #0369a1;
+  --accent-primary-alpha: rgba(2, 132, 199, 0.08);
+
+  --accent-success: #059669;
+  --accent-warning: #d97706;
+  --accent-ai: #7c3aed;
+  --accent-ai-hover: #6d28d9;
+  --accent-ai-alpha: rgba(124, 58, 237, 0.1);
+}
+
+/* ── Universal Styles ──────────────────────────────────────────────────────── */
+*, *::before, *::after { 
+  box-sizing: border-box; 
+}
+
+html {
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
 
 body {
   margin: 0;
@@ -51,23 +82,57 @@ body {
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: var(--bg-primary); }
-::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: var(--radius-full); }
-::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
-
-a { color: var(--accent-primary); text-decoration: none; transition: color var(--transition-fast); }
-a:hover { color: var(--accent-primary-hover); }
-button, input, textarea, select { font-family: inherit; font-size: inherit; }
-
-/* pulse animation used in dashboard */
-@keyframes pulse-glow {
-  0%   { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7); }
-  70%  { transform: scale(1);    box-shadow: 0 0 0 6px rgba(168, 85, 247, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
+::-webkit-scrollbar { 
+  width: 8px; 
+  height: 8px; 
 }
 
-/* glow blobs used in landing */
+::-webkit-scrollbar-track { 
+  background: var(--bg-primary); 
+}
+
+::-webkit-scrollbar-thumb { 
+  background: var(--border-color); 
+  border-radius: var(--radius-full); 
+  transition: background var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover { 
+  background: var(--text-muted); 
+}
+
+a { 
+  color: var(--accent-primary); 
+  text-decoration: none; 
+  transition: color var(--transition-fast); 
+}
+
+a:hover { 
+  color: var(--accent-primary-hover); 
+}
+
+button, input, textarea, select { 
+  font-family: inherit; 
+  font-size: inherit;
+}
+
+/* Smooth transitions between themes */
+input, textarea, button, div, a, span, p, h1, h2, h3, h4, h5, h6 {
+  transition: background-color var(--transition-normal), 
+              color var(--transition-normal),
+              border-color var(--transition-normal);
+}
+
+/* ── Animations ────────────────────────────────────────────────────────────── */
+
+/* Pulse animation for AI features */
+@keyframes pulse-glow {
+  0%   { transform: scale(0.95); box-shadow: 0 0 0 0 var(--accent-ai-alpha); }
+  70%  { transform: scale(1);    box-shadow: 0 0 0 6px transparent; }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 transparent; }
+}
+
+/* Float animation for blobs */
 @keyframes blob-float {
   0%, 100% { transform: translate(0, 0) scale(1); }
   33%       { transform: translate(30px, -20px) scale(1.05); }

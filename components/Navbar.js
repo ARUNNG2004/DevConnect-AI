@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
+import { useTheme } from "../context/ThemeContext";
 
 const S = {
   // ── Landing navbar ──────────────────────────────────────────────────────────
@@ -16,7 +17,7 @@ const S = {
     justifyContent: "space-between",
     alignItems: "center",
     padding: "16px 8%",
-    background: "rgba(3, 7, 18, 0.75)",
+    background: "var(--bg-secondary)",
     backdropFilter: "blur(16px)",
     WebkitBackdropFilter: "blur(16px)",
     borderBottom: "1px solid var(--border-color)",
@@ -32,7 +33,7 @@ const S = {
     textDecoration: "none",
   },
   logoIcon: {
-    background: "linear-gradient(135deg, #38bdf8, #a855f7)",
+    background: "linear-gradient(135deg, var(--accent-primary), var(--accent-ai))",
     color: "#000",
     width: 32,
     height: 32,
@@ -47,25 +48,44 @@ const S = {
   navLinks: {
     display: "flex",
     alignItems: "center",
-    gap: 32,
+    gap: 16,
   },
   navLink: {
     color: "var(--text-secondary)",
     textDecoration: "none",
     fontWeight: 500,
     fontSize: "0.95rem",
-    transition: "var(--transition-fast)",
-    padding: "6px 0",
+    transition: "color var(--transition-fast)",
+    padding: "6px 12px",
+    cursor: "pointer",
   },
   btnNavCta: {
     display: "inline-block",
     padding: "10px 20px",
-    background: "linear-gradient(135deg, #38bdf8, #a855f7)",
+    background: "linear-gradient(135deg, var(--accent-primary), var(--accent-ai))",
     color: "#000",
     fontWeight: 600,
     borderRadius: "var(--radius-sm)",
     boxShadow: "0 4px 15px rgba(56, 189, 248, 0.2)",
     textDecoration: "none",
+    cursor: "pointer",
+    border: "none",
+    transition: "transform var(--transition-fast)",
+  },
+  themeToggleBtn: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 40,
+    height: 40,
+    background: "var(--bg-primary)",
+    border: "1.5px solid var(--border-color)",
+    borderRadius: "var(--radius-md)",
+    color: "var(--text-primary)",
+    cursor: "pointer",
+    transition: "all var(--transition-fast)",
+    fontSize: "1.2rem",
+    fontWeight: 600,
   },
 
   // ── Dashboard navbar ─────────────────────────────────────────────────────────
@@ -78,7 +98,7 @@ const S = {
     justifyContent: "space-between",
     height: 64,
     padding: "0 24px",
-    backgroundColor: "rgba(15, 23, 42, 0.85)",
+    backgroundColor: "var(--bg-secondary)",
     backdropFilter: "blur(12px)",
     WebkitBackdropFilter: "blur(12px)",
     borderBottom: "1px solid var(--border-color)",
@@ -101,7 +121,7 @@ const S = {
   navSearchInput: {
     width: "100%",
     padding: "8px 16px 8px 40px",
-    backgroundColor: "rgba(30, 41, 59, 0.8)",
+    backgroundColor: "var(--bg-tertiary)",
     border: "1px solid var(--border-color)",
     borderRadius: "var(--radius-full)",
     color: "var(--text-primary)",
@@ -120,20 +140,21 @@ const S = {
   navActions: {
     display: "flex",
     alignItems: "center",
-    gap: 16,
+    gap: 12,
   },
   btnIcon: {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     background: "transparent",
-    border: "1px solid var(--border-color)",
-    borderRadius: "var(--radius-full)",
+    border: "1.5px solid var(--border-color)",
+    borderRadius: "var(--radius-md)",
     color: "var(--text-secondary)",
     cursor: "pointer",
     transition: "all var(--transition-fast)",
+    fontSize: "1rem",
   },
   userProfileMenu: {
     display: "flex",
@@ -146,7 +167,7 @@ const S = {
     position: "relative",
     width: 36,
     height: 36,
-    background: "linear-gradient(135deg, #0284c7, #38bdf8)",
+    background: "linear-gradient(135deg, var(--accent-primary), var(--accent-ai))",
     borderRadius: "var(--radius-full)",
     display: "flex",
     alignItems: "center",
@@ -160,6 +181,7 @@ const S = {
 
 export default function Navbar({ variant = "landing" }) {
   const { user, logout } = useAuth();
+  const { isDarkMode, toggleTheme } = useTheme();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -241,6 +263,24 @@ export default function Navbar({ variant = "landing" }) {
               Sign In
             </Link>
           )}
+
+          <button
+            onClick={toggleTheme}
+            style={S.themeToggleBtn}
+            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--accent-primary-alpha)";
+              e.currentTarget.style.borderColor = "var(--accent-primary)";
+              e.currentTarget.style.color = "var(--accent-primary)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--bg-primary)";
+              e.currentTarget.style.borderColor = "var(--border-color)";
+              e.currentTarget.style.color = "var(--text-primary)";
+            }}
+          >
+            {isDarkMode ? "☀️" : "🌙"}
+          </button>
         </div>
       </nav>
     );
@@ -265,6 +305,24 @@ export default function Navbar({ variant = "landing" }) {
       <div style={S.navActions}>
         <button style={S.btnIcon} title="AI Code Review Alerts">✨</button>
         <button style={S.btnIcon} title="Notifications">🔔</button>
+
+        <button
+          onClick={toggleTheme}
+          style={S.btnIcon}
+          title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "var(--accent-primary-alpha)";
+            e.currentTarget.style.borderColor = "var(--accent-primary)";
+            e.currentTarget.style.color = "var(--accent-primary)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent";
+            e.currentTarget.style.borderColor = "var(--border-color)";
+            e.currentTarget.style.color = "var(--text-secondary)";
+          }}
+        >
+          {isDarkMode ? "☀️" : "🌙"}
+        </button>
 
         {user ? (
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -306,6 +364,8 @@ export default function Navbar({ variant = "landing" }) {
               fontWeight: 600,
               fontSize: "0.9rem",
               textDecoration: "none",
+              cursor: "pointer",
+              border: "none",
             }}
           >
             Sign In

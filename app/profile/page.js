@@ -1,68 +1,72 @@
 "use client";
 
-import { useAuth } from "../../context/AuthContext";
-import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 
 const S = {
   navbar: {
-    position: "sticky",
+    position: "fixed",
     top: 0,
-    zIndex: 50,
+    left: 0,
+    width: "100%",
+    height: 64,
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    height: 64,
     padding: "0 24px",
-    backgroundColor: "rgba(15, 23, 42, 0.85)",
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
+    background: "var(--bg-secondary)",
     borderBottom: "1px solid var(--border-color)",
+    zIndex: 100,
+    backdropFilter: "blur(16px)",
+    WebkitBackdropFilter: "blur(16px)",
   },
   navBrand: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
+    fontSize: "1.2rem",
     fontWeight: 700,
-    fontSize: "1.25rem",
     color: "var(--text-primary)",
     textDecoration: "none",
-  },
-  navActions: { display: "flex", alignItems: "center", gap: 16 },
-  btnNavBack: {
-    padding: "8px 16px",
-    background: "var(--accent-primary-alpha)",
-    color: "var(--accent-primary)",
-    borderRadius: "var(--radius-md)",
-    fontWeight: 600,
-    fontSize: "0.9rem",
-    textDecoration: "none",
-  },
-  btnLogout: {
     display: "flex",
     alignItems: "center",
-    gap: 6,
-    width: "auto",
-    padding: "0 14px",
-    height: 36,
+    gap: 8,
+  },
+  navActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: 16,
+  },
+  btnNavBack: {
+    padding: "8px 16px",
     background: "transparent",
     border: "1px solid var(--border-color)",
-    borderRadius: "var(--radius-full)",
+    borderRadius: "var(--radius-md)",
     color: "var(--text-secondary)",
+    fontWeight: 500,
     cursor: "pointer",
-    fontFamily: "inherit",
-    fontSize: "inherit",
+    textDecoration: "none",
+    transition: "all var(--transition-fast)",
   },
-  card: {
-    backgroundColor: "var(--bg-secondary)",
-    border: "1px solid var(--border-color)",
-    borderRadius: "var(--radius-lg)",
-    padding: 32,
-    display: "flex",
-    flexDirection: "column",
-    gap: 24,
-    boxShadow: "var(--shadow-sm)",
+  btnLogout: {
+    padding: "8px 16px",
+    background: "rgba(239, 68, 68, 0.1)",
+    border: "1px solid rgba(239, 68, 68, 0.3)",
+    borderRadius: "var(--radius-md)",
+    color: "#ef4444",
+    fontWeight: 600,
+    cursor: "pointer",
+    transition: "all var(--transition-fast)",
+  },
+  main: {
+    minHeight: "100vh",
+    background: "var(--bg-primary)",
+    paddingTop: 64,
+  },
+  container: {
+    maxWidth: "45rem",
+    margin: "40px auto",
+    padding: "0 24px",
   },
   cardSmall: {
     backgroundColor: "var(--bg-secondary)",
@@ -86,6 +90,7 @@ const S = {
     color: "#000",
     border: "3px solid var(--border-color)",
     flexShrink: 0,
+    margin: "0 auto",
   },
   divider: { borderTop: "1px solid var(--border-color)" },
   infoRow: { display: "flex", alignItems: "center", gap: 12 },
@@ -102,11 +107,13 @@ const S = {
     fontSize: "0.95rem",
     cursor: "pointer",
     fontFamily: "inherit",
+    transition: "all var(--transition-fast)",
   },
 };
 
 export default function Profile() {
   const { user, logout, loading } = useAuth();
+  const { isDarkMode, toggleTheme } = useTheme();
   const router = useRouter();
 
   useEffect(() => {
@@ -137,13 +144,33 @@ export default function Profile() {
     : "Recently";
 
   return (
-    <main style={{ minHeight: "100vh", background: "var(--bg-primary)" }}>
+    <main style={S.main}>
       {/* Navbar */}
       <header style={S.navbar}>
         <Link href="/dashboard" style={S.navBrand}>
           <span>🧠 DevConnect AI</span>
         </Link>
         <div style={S.navActions}>
+          <button
+            onClick={toggleTheme}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 36,
+              height: 36,
+              background: "transparent",
+              border: "1px solid var(--border-color)",
+              borderRadius: "var(--radius-full)",
+              color: "var(--text-secondary)",
+              cursor: "pointer",
+              transition: "all var(--transition-fast)",
+              fontSize: "1.2rem",
+            }}
+            title="Toggle theme"
+          >
+            {isDarkMode ? "☀️" : "🌙"}
+          </button>
           <Link href="/dashboard" style={S.btnNavBack}>← Dashboard</Link>
           <button onClick={handleLogout} style={S.btnLogout} title="Logout">
             🚪 Logout
@@ -152,88 +179,83 @@ export default function Profile() {
       </header>
 
       {/* Content */}
-      <div style={{ maxWidth: 720, margin: "40px auto", padding: "0 24px" }}>
-
+      <div style={S.container}>
         {/* Profile Card */}
-        <div style={S.card}>
-          {/* Avatar + Name */}
-          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+        <div style={S.cardSmall}>
+          <div style={S.avatarLarge}>
             {user.photoURL ? (
               <img
                 src={user.photoURL}
                 alt={user.displayName}
-                style={{ width: 80, height: 80, borderRadius: "var(--radius-full)", border: "3px solid var(--border-color)", objectFit: "cover" }}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: "var(--radius-full)",
+                  objectFit: "cover",
+                }}
               />
             ) : (
-              <div style={S.avatarLarge}>
-                {user.displayName?.charAt(0).toUpperCase() || "U"}
-              </div>
+              user.displayName?.charAt(0).toUpperCase() || "U"
             )}
-            <div style={{ flex: 1 }}>
-              <h1 style={{ color: "var(--text-primary)", fontSize: "1.6rem", fontWeight: 700, margin: "0 0 4px 0" }}>
-                {user.displayName || "Anonymous Developer"}
-              </h1>
-              <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", margin: 0 }}>
-                Joined {joinedDate}
-              </p>
-            </div>
           </div>
 
-          <div style={S.divider} />
-
-          {/* Info rows */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={S.infoRow}>
-              <span style={{ fontSize: "1.1rem" }}>📧</span>
-              <div>
-                <p style={S.infoLabel}>Email</p>
-                <p style={S.infoValue}>{user.email}</p>
-              </div>
-            </div>
-
-            <div style={S.infoRow}>
-              <span style={{ fontSize: "1.1rem" }}>🔐</span>
-              <div>
-                <p style={S.infoLabel}>Sign-in Provider</p>
-                <p style={{ ...S.infoValue, textTransform: "capitalize" }}>
-                  {user.providerData?.[0]?.providerId?.replace(".com", "") || "Unknown"}
-                </p>
-              </div>
-            </div>
-
-            <div style={S.infoRow}>
-              <span style={{ fontSize: "1.1rem" }}>✅</span>
-              <div>
-                <p style={S.infoLabel}>Email Verified</p>
-                <p style={{ ...S.infoValue, color: user.emailVerified ? "var(--accent-success)" : "var(--accent-warning)", fontWeight: 600 }}>
-                  {user.emailVerified ? "Verified" : "Not Verified"}
-                </p>
-              </div>
-            </div>
-
-            <div style={S.infoRow}>
-              <span style={{ fontSize: "1.1rem" }}>🪪</span>
-              <div>
-                <p style={S.infoLabel}>User ID</p>
-                <p style={{ ...S.infoValue, color: "var(--text-secondary)", fontSize: "0.8rem", fontFamily: "var(--font-mono)", wordBreak: "break-all" }}>
-                  {user.uid}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div style={S.divider} />
-
-          <button onClick={handleLogout} style={S.btnSignOut}>
-            🚪 Sign Out
-          </button>
+          <h1 style={{ color: "var(--text-primary)", marginTop: 16, marginBottom: 4 }}>
+            {user.displayName || "Anonymous User"}
+          </h1>
+          <p style={{ color: "var(--text-muted)", margin: 0 }}>
+            {user.email}
+          </p>
         </div>
 
-        {/* Coming soon card */}
+        {/* Stats Cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 20 }}>
+          <div style={S.cardSmall}>
+            <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: 8 }}>Posts</div>
+            <div style={{ color: "var(--accent-primary)", fontSize: "2rem", fontWeight: 700 }}>0</div>
+          </div>
+          <div style={S.cardSmall}>
+            <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: 8 }}>Joined</div>
+            <div style={{ color: "var(--text-primary)", fontSize: "0.95rem", fontWeight: 600 }}>{joinedDate}</div>
+          </div>
+        </div>
+
+        {/* Account Info */}
         <div style={S.cardSmall}>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", margin: 0 }}>
-            📝 Your posts, saved items, and activity will appear here soon.
-          </p>
+          <h2 style={{ color: "var(--text-primary)", fontSize: "1.1rem", marginBottom: 16 }}>Account Information</h2>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div>
+              <div style={S.infoLabel}>Email Address</div>
+              <div style={S.infoValue}>{user.email}</div>
+            </div>
+
+            <div style={S.divider} />
+
+            <div>
+              <div style={S.infoLabel}>Display Name</div>
+              <div style={S.infoValue}>{user.displayName || "Not set"}</div>
+            </div>
+
+            <div style={S.divider} />
+
+            <div>
+              <div style={S.infoLabel}>Account Status</div>
+              <div style={{ ...S.infoValue, color: "var(--accent-success)" }}>Active</div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleLogout}
+            style={{ ...S.btnSignOut, marginTop: 20 }}
+            onMouseEnter={(e) => {
+              e.target.style.background = "rgba(239, 68, 68, 0.15)";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = "rgba(239, 68, 68, 0.1)";
+            }}
+          >
+            Sign Out
+          </button>
         </div>
       </div>
     </main>
