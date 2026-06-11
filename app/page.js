@@ -1,5 +1,7 @@
+"use client";
 import Link from "next/link";
 import CodeReview from "../components/CodeReview";
+import { useEffect } from "react";
 
 // ── Design tokens (mirroring landing CSS variables) ───────────────────────────
 const C = {
@@ -497,6 +499,21 @@ const S = {
 };
 
 export default function Home() {
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const target = params.get("scrollTo");
+
+    if (target) {
+      setTimeout(() => {
+        document.getElementById(target)?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 300);
+    }
+  }, []);
+
   return (
     <main style={S.main}>
       {/* Glow blobs */}
@@ -630,7 +647,9 @@ export default function Home() {
       </section>
 
       {/* ── AI Code Review Component ── */}
-      <CodeReview />
+      <section id="ai-code-review">
+  <CodeReview />
+</section>
 
       {/* ── Workflow ── */}
       <section style={S.section} id="workflow">
