@@ -1037,9 +1037,14 @@ export default function Dashboard() {
                 <p style={S.aiPromoText}>
                   Let AI review your code changes, suggest performance improvements, and write documentation snippets.
                 </p>
-                <button style={S.btnAiCta}>
-                  <span>Ask for AI Code Review</span>
-                </button>
+                <button
+    style={S.btnAiCta}
+    onClick={() => {
+      window.location.href = "/?scrollTo=ai-code-review";
+    }}
+>
+    <span>Ask for AI Code Review</span>
+</button>
               </div>
 
               <div style={S.sidebarWidget}>

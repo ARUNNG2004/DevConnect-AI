@@ -697,7 +697,9 @@ export default function Home() {
       </section>
 
       {/* ── AI Code Review Component ── */}
-      <CodeReview />
+      <section id="ai-code-review">
+  <CodeReview />
+</section>
 
       {/* ── Workflow ── */}
       <section style={S.section} id="workflow">
