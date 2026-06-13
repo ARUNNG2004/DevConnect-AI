@@ -6,6 +6,7 @@ import { useEffect, useState, useMemo } from "react";
 import Navbar from "../../components/Navbar";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import CodeEditorModal from "../../components/CodeEditorModal";
+import SavedPosts from "../../components/SavedPosts";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../lib/firebase";
 import AIDraftAssistant from "../../components/AIDraftAssistant";
@@ -14,6 +15,7 @@ import {
   addDoc,
   deleteDoc,
   updateDoc,
+  setDoc,
   doc,
   query,
   orderBy,
@@ -66,6 +68,13 @@ const S = {
     fontWeight: 500,
     textDecoration: "none",
     transition: "all var(--transition-fast)",
+    border: "none",
+    background: "transparent",
+    width: "100%",
+    textAlign: "left",
+    fontSize: "inherit",
+    fontFamily: "inherit",
+    cursor: "pointer",
   },
   sidebarNavItemLinkActive: {
     display: "flex",
@@ -77,6 +86,12 @@ const S = {
     fontWeight: 600,
     textDecoration: "none",
     backgroundColor: "var(--accent-primary-alpha)",
+    border: "none",
+    width: "100%",
+    textAlign: "left",
+    fontSize: "inherit",
+    fontFamily: "inherit",
+    cursor: "pointer",
   },
   sidebarFooterCard: {
     backgroundColor: "var(--bg-secondary)",
@@ -341,6 +356,19 @@ const S = {
     padding: "6px 10px",
     borderRadius: "var(--radius-sm)",
   },
+  btnActionActive: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    background: "transparent",
+    border: "none",
+    color: "var(--accent-primary)",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+    fontWeight: 600,
+    padding: "6px 10px",
+    borderRadius: "var(--radius-sm)",
+  },
   btnActionDanger: {
     display: "flex",
     alignItems: "center",
@@ -537,6 +565,10 @@ export default function Dashboard() {
   const [editingComment, setEditingComment] = useState(null);
   const [editingCommentDraft, setEditingCommentDraft] = useState("");
 
+  // ── Saved posts ──────────────────────────────────────────────────────────
+  const [savedPostIds, setSavedPostIds] = useState([]);
+  const [showSavedPosts, setShowSavedPosts] = useState(false);
+
   const availableTags = [
     "#react", "#nextjs", "#javascript", "#typescript",
     "#frontend", "#backend", "#nodejs", "#python",
@@ -558,6 +590,25 @@ export default function Dashboard() {
     );
     return () => unsubscribe();
   }, []);
+
+  // Listen to the current user's saved post IDs (stored on users/{uid})
+  useEffect(() => {
+    if (!user) {
+      setSavedPostIds([]);
+      return;
+    }
+    const unsubscribe = onSnapshot(
+      doc(db, "users", user.uid),
+      (snap) => {
+        const data = snap.data();
+        setSavedPostIds(data?.savedPosts || []);
+      },
+      (err) => {
+        console.error(err);
+      }
+    );
+    return () => unsubscribe();
+  }, [user]);
 
   // ── Trending tags, computed live from posts ────────────────────────────────
   const trendingTags = useMemo(() => {
@@ -647,6 +698,25 @@ export default function Dashboard() {
     } catch (err) {
       console.error(err);
       setError("Failed to update like. Please try again.");
+    }
+  };
+
+  // Toggle save/unsave a post for the current user.
+  // Saved post IDs are stored in users/{uid}.savedPosts (array of post IDs).
+  const handleToggleSave = async (postId) => {
+    if (!user) return;
+    const isSaved = savedPostIds.includes(postId);
+    try {
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          savedPosts: isSaved ? arrayRemove(postId) : arrayUnion(postId),
+        },
+        { merge: true }
+      );
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update saved posts. Please try again.");
     }
   };
 
@@ -769,7 +839,6 @@ export default function Dashboard() {
                   { icon: "📈", label: "Trending" },
                   { icon: "❔", label: "Questions" },
                   { icon: "👥", label: "Collaborations" },
-                  { icon: "🔖", label: "Saved Posts" },
                 ].map(({ icon, label, active }) => (
                   <li key={label}>
                     <a href="#" style={active ? S.sidebarNavItemLinkActive : S.sidebarNavItemLink}>
@@ -778,6 +847,26 @@ export default function Dashboard() {
                     </a>
                   </li>
                 ))}
+                <li>
+                  <button
+                    style={S.sidebarNavItemLink}
+                    onClick={() => setShowSavedPosts(true)}
+                  >
+                    <span>🔖</span>
+                    <span>Saved Posts</span>
+                    {savedPostIds.length > 0 && (
+                      <span
+                        style={{
+                          marginLeft: "auto",
+                          fontSize: "0.7rem",
+                          color: "var(--text-muted)",
+                        }}
+                      >
+                        {savedPostIds.length}
+                      </span>
+                    )}
+                  </button>
+                </li>
                 <li>
                   <a href="/" style={S.sidebarNavItemLink}>
                     <span>ℹ️</span>
@@ -959,254 +1048,263 @@ export default function Dashboard() {
                 {posts.length === 0 ? (
                   <p style={{ color: "var(--text-muted)" }}>No posts yet. Create the first post!</p>
                 ) : (
-                  posts.map((post) => (
-                    <article style={S.discussionCard} key={post.id}>
-                      <div style={S.cardHeader}>
-                        <div style={S.authorInfo}>
-                          <div style={S.authorAvatar}>
-                            {post.displayName?.charAt(0)?.toUpperCase() || "U"}
+                  posts.map((post) => {
+                    const isSaved = savedPostIds.includes(post.id);
+                    return (
+                      <article style={S.discussionCard} key={post.id}>
+                        <div style={S.cardHeader}>
+                          <div style={S.authorInfo}>
+                            <div style={S.authorAvatar}>
+                              {post.displayName?.charAt(0)?.toUpperCase() || "U"}
+                            </div>
+                            <div style={S.authorMeta}>
+                              <span style={S.authorName}>{post.displayName || "Anonymous User"}</span>
+                              <span style={S.authorTitle}>Community Member</span>
+                            </div>
                           </div>
-                          <div style={S.authorMeta}>
-                            <span style={S.authorName}>{post.displayName || "Anonymous User"}</span>
-                            <span style={S.authorTitle}>Community Member</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span style={S.categoryTag}>Discussion</span>
+                            <span style={S.postTimestamp}>
+                              {post.timestamp?.toDate
+                                ? post.timestamp.toDate().toLocaleString()
+                                : "Just now"}
+                              {post.edited ? " (edited)" : ""}
+                            </span>
                           </div>
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <span style={S.categoryTag}>Discussion</span>
-                          <span style={S.postTimestamp}>
-                            {post.timestamp?.toDate
-                              ? post.timestamp.toDate().toLocaleString()
-                              : "Just now"}
-                            {post.edited ? " (edited)" : ""}
-                          </span>
-                        </div>
-                      </div>
 
-                      <h2 style={S.postTitle}>Community Discussion</h2>
+                        <h2 style={S.postTitle}>Community Discussion</h2>
 
-                      {editingId === post.id ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <textarea
-                            style={S.composerTextarea}
-                            value={editContent}
-                            onChange={(e) => setEditContent(e.target.value)}
-                          />
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <button style={S.btnPost} onClick={() => handleSaveEdit(post.id)}>Save</button>
-                            <button style={S.btnAction} onClick={cancelEdit}>Cancel</button>
+                        {editingId === post.id ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            <textarea
+                              style={S.composerTextarea}
+                              value={editContent}
+                              onChange={(e) => setEditContent(e.target.value)}
+                            />
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button style={S.btnPost} onClick={() => handleSaveEdit(post.id)}>Save</button>
+                              <button style={S.btnAction} onClick={cancelEdit}>Cancel</button>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <div style={S.postBody}>
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            components={{
-                              code({ className, children, ...props }) {
-                                const isInline = !className;
-                                return isInline ? (
-                                  <code
-                                    style={{
-                                      background: "var(--bg-primary)",
-                                      padding: "2px 6px",
-                                      borderRadius: 4,
-                                      fontSize: "0.85em",
-                                    }}
-                                    {...props}
-                                  >
-                                    {children}
-                                  </code>
-                                ) : (
-                                  <pre
-                                    style={{
-                                      background: "var(--bg-primary)",
-                                      border: "1px solid var(--border-color)",
-                                      borderRadius: "var(--radius-md)",
-                                      padding: 12,
-                                      overflowX: "auto",
-                                      fontSize: "0.85em",
-                                    }}
-                                  >
-                                    <code className={className} {...props}>
+                        ) : (
+                          <div style={S.postBody}>
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                code({ className, children, ...props }) {
+                                  const isInline = !className;
+                                  return isInline ? (
+                                    <code
+                                      style={{
+                                        background: "var(--bg-primary)",
+                                        padding: "2px 6px",
+                                        borderRadius: 4,
+                                        fontSize: "0.85em",
+                                      }}
+                                      {...props}
+                                    >
                                       {children}
                                     </code>
-                                  </pre>
-                                );
-                              },
-                              p({ children }) {
-                                return <p style={{ margin: "0 0 10px 0", lineHeight: 1.6 }}>{children}</p>;
-                              },
-                              h1({ children }) {
-                                return <h3 style={{ margin: "12px 0 6px" }}>{children}</h3>;
-                              },
-                              h2({ children }) {
-                                return <h3 style={{ margin: "12px 0 6px" }}>{children}</h3>;
-                              },
-                              h3({ children }) {
-                                return <h4 style={{ margin: "10px 0 6px" }}>{children}</h4>;
-                              },
-                              ul({ children }) {
-                                return <ul style={{ paddingLeft: 20, margin: "0 0 10px 0" }}>{children}</ul>;
-                              },
-                              ol({ children }) {
-                                return <ol style={{ paddingLeft: 20, margin: "0 0 10px 0" }}>{children}</ol>;
-                              },
-                              li({ children }) {
-                                return <li style={{ marginBottom: 4 }}>{children}</li>;
-                              },
-                            }}
-                          >
-                            {post.content}
-                          </ReactMarkdown>
-                        </div>
-                      )}
-
-                      <div style={S.postTags}>
-                        {post.tags && post.tags.length > 0 ? (
-                          post.tags.map((tag) => (
-                            <a href="#" style={S.postTag} key={tag}>{tag}</a>
-                          ))
-                        ) : (
-                          <a href="#" style={S.postTag}>#community</a>
-                        )}
-                      </div>
-
-                      <div style={S.postActions}>
-                        <div style={S.postActionsGroup}>
-                          <button style={S.btnAction} onClick={() => handleToggleLike(post)}>
-                            {(post.likedBy || []).includes(user?.uid) ? "❤️" : "♡"}{" "}
-                            <span>{post.likes || 0}</span> Likes
-                          </button>
-                          <button style={S.btnAction} onClick={() => toggleComments(post.id)}>
-                            💬 <span>{post.comments?.length || 0}</span> Comments
-                          </button>
-                        </div>
-                        <button style={S.btnAction}>🔖 Save</button>
-                        {user?.uid === post.uid && (
-                          <div style={{ display: "flex", gap: 4 }}>
-                            <button style={S.btnAction} onClick={() => startEdit(post)}>✏️ Edit</button>
-                            <button style={S.btnAction} onClick={() => handleDeletePost(post.id)}>🗑️ Delete</button>
+                                  ) : (
+                                    <pre
+                                      style={{
+                                        background: "var(--bg-primary)",
+                                        border: "1px solid var(--border-color)",
+                                        borderRadius: "var(--radius-md)",
+                                        padding: 12,
+                                        overflowX: "auto",
+                                        fontSize: "0.85em",
+                                      }}
+                                    >
+                                      <code className={className} {...props}>
+                                        {children}
+                                      </code>
+                                    </pre>
+                                  );
+                                },
+                                p({ children }) {
+                                  return <p style={{ margin: "0 0 10px 0", lineHeight: 1.6 }}>{children}</p>;
+                                },
+                                h1({ children }) {
+                                  return <h3 style={{ margin: "12px 0 6px" }}>{children}</h3>;
+                                },
+                                h2({ children }) {
+                                  return <h3 style={{ margin: "12px 0 6px" }}>{children}</h3>;
+                                },
+                                h3({ children }) {
+                                  return <h4 style={{ margin: "10px 0 6px" }}>{children}</h4>;
+                                },
+                                ul({ children }) {
+                                  return <ul style={{ paddingLeft: 20, margin: "0 0 10px 0" }}>{children}</ul>;
+                                },
+                                ol({ children }) {
+                                  return <ol style={{ paddingLeft: 20, margin: "0 0 10px 0" }}>{children}</ol>;
+                                },
+                                li({ children }) {
+                                  return <li style={{ marginBottom: 4 }}>{children}</li>;
+                                },
+                              }}
+                            >
+                              {post.content}
+                            </ReactMarkdown>
                           </div>
                         )}
-                      </div>
 
-                      {/* ── Comments panel ──────────────────────────────── */}
-                      {openCommentsFor === post.id && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4, borderTop: "1px solid var(--border-color)", paddingTop: 14 }}>
-
-                          {/* Comment list */}
-                          {(post.comments || []).length === 0 ? (
-                            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: 0 }}>
-                              No comments yet. Be the first!
-                            </p>
+                        <div style={S.postTags}>
+                          {post.tags && post.tags.length > 0 ? (
+                            post.tags.map((tag) => (
+                              <a href="#" style={S.postTag} key={tag}>{tag}</a>
+                            ))
                           ) : (
-                            (post.comments || [])
-                              .slice()
-                              .sort((a, b) => a.createdAt - b.createdAt)
-                              .map((c) => {
-                                const isEditingThis =
-                                  editingComment?.postId === post.id &&
-                                  editingComment?.createdAt === c.createdAt;
-                                const isOwner = user?.uid === c.uid;
-
-                                return (
-                                  <div key={`${c.uid}-${c.createdAt}`} style={S.commentItem}>
-                                    <div style={S.commentHeader}>
-                                      <span style={S.commentAuthor}>{c.displayName}</span>
-                                      <div style={S.commentMeta}>
-                                        <span>
-                                          {new Date(c.createdAt).toLocaleString(undefined, {
-                                            month: "short", day: "numeric",
-                                            hour: "2-digit", minute: "2-digit",
-                                          })}
-                                        </span>
-                                        {c.edited && (
-                                          <span style={{ fontStyle: "italic" }}>(edited)</span>
-                                        )}
-                                        {isOwner && !isEditingThis && (
-                                          <>
-                                            <button
-                                              style={S.btnActionDanger}
-                                              onClick={() => startEditComment({ ...c, _postId: post.id })}
-                                              title="Edit comment"
-                                            >
-                                              ✏️
-                                            </button>
-                                            <button
-                                              style={S.btnActionDanger}
-                                              onClick={() => handleDeleteComment(post, c)}
-                                              title="Delete comment"
-                                            >
-                                              🗑️
-                                            </button>
-                                          </>
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    {isEditingThis ? (
-                                      <>
-                                        <textarea
-                                          style={S.commentEditTextarea}
-                                          value={editingCommentDraft}
-                                          onChange={(e) => setEditingCommentDraft(e.target.value)}
-                                          autoFocus
-                                        />
-                                        <div style={S.commentEditActions}>
-                                          <button
-                                            style={S.btnSm}
-                                            onClick={() => handleSaveCommentEdit(post, c)}
-                                          >
-                                            Save
-                                          </button>
-                                          <button style={S.btnSmGhost} onClick={cancelEditComment}>
-                                            Cancel
-                                          </button>
-                                        </div>
-                                      </>
-                                    ) : (
-                                      <p style={{ ...S.commentBody, margin: 0 }}>{c.content}</p>
-                                    )}
-                                  </div>
-                                );
-                              })
+                            <a href="#" style={S.postTag}>#community</a>
                           )}
+                        </div>
 
-                          {/* New comment input */}
-                          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                            <input
-                              style={{
-                                flex: 1,
-                                background: "var(--bg-primary)",
-                                border: "1px solid var(--border-color)",
-                                borderRadius: "var(--radius-md)",
-                                color: "var(--text-primary)",
-                                outline: "none",
-                                fontSize: "0.875rem",
-                                fontFamily: "inherit",
-                                padding: "8px 12px",
-                              }}
-                              placeholder="Write a comment…"
-                              value={commentDraft}
-                              onChange={(e) => setCommentDraft(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" && !e.shiftKey) {
-                                  e.preventDefault();
-                                  handleAddComment(post);
-                                }
-                              }}
-                            />
-                            <button
-                              style={commentDraft.trim() ? S.btnPost : S.btnPostDisabled}
-                              disabled={!commentDraft.trim()}
-                              onClick={() => handleAddComment(post)}
-                            >
-                              Post
+                        <div style={S.postActions}>
+                          <div style={S.postActionsGroup}>
+                            <button style={S.btnAction} onClick={() => handleToggleLike(post)}>
+                              {(post.likedBy || []).includes(user?.uid) ? "❤️" : "♡"}{" "}
+                              <span>{post.likes || 0}</span> Likes
+                            </button>
+                            <button style={S.btnAction} onClick={() => toggleComments(post.id)}>
+                              💬 <span>{post.comments?.length || 0}</span> Comments
                             </button>
                           </div>
+                          <button
+                            style={isSaved ? S.btnActionActive : S.btnAction}
+                            onClick={() => handleToggleSave(post.id)}
+                            title={isSaved ? "Remove from saved" : "Save post"}
+                          >
+                            {isSaved ? "🔖 Saved" : "🔖 Save"}
+                          </button>
+                          {user?.uid === post.uid && (
+                            <div style={{ display: "flex", gap: 4 }}>
+                              <button style={S.btnAction} onClick={() => startEdit(post)}>✏️ Edit</button>
+                              <button style={S.btnAction} onClick={() => handleDeletePost(post.id)}>🗑️ Delete</button>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </article>
-                  ))
+
+                        {/* ── Comments panel ──────────────────────────────── */}
+                        {openCommentsFor === post.id && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4, borderTop: "1px solid var(--border-color)", paddingTop: 14 }}>
+
+                            {/* Comment list */}
+                            {(post.comments || []).length === 0 ? (
+                              <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: 0 }}>
+                                No comments yet. Be the first!
+                              </p>
+                            ) : (
+                              (post.comments || [])
+                                .slice()
+                                .sort((a, b) => a.createdAt - b.createdAt)
+                                .map((c) => {
+                                  const isEditingThis =
+                                    editingComment?.postId === post.id &&
+                                    editingComment?.createdAt === c.createdAt;
+                                  const isOwner = user?.uid === c.uid;
+
+                                  return (
+                                    <div key={`${c.uid}-${c.createdAt}`} style={S.commentItem}>
+                                      <div style={S.commentHeader}>
+                                        <span style={S.commentAuthor}>{c.displayName}</span>
+                                        <div style={S.commentMeta}>
+                                          <span>
+                                            {new Date(c.createdAt).toLocaleString(undefined, {
+                                              month: "short", day: "numeric",
+                                              hour: "2-digit", minute: "2-digit",
+                                            })}
+                                          </span>
+                                          {c.edited && (
+                                            <span style={{ fontStyle: "italic" }}>(edited)</span>
+                                          )}
+                                          {isOwner && !isEditingThis && (
+                                            <>
+                                              <button
+                                                style={S.btnActionDanger}
+                                                onClick={() => startEditComment({ ...c, _postId: post.id })}
+                                                title="Edit comment"
+                                              >
+                                                ✏️
+                                              </button>
+                                              <button
+                                                style={S.btnActionDanger}
+                                                onClick={() => handleDeleteComment(post, c)}
+                                                title="Delete comment"
+                                              >
+                                                🗑️
+                                              </button>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {isEditingThis ? (
+                                        <>
+                                          <textarea
+                                            style={S.commentEditTextarea}
+                                            value={editingCommentDraft}
+                                            onChange={(e) => setEditingCommentDraft(e.target.value)}
+                                            autoFocus
+                                          />
+                                          <div style={S.commentEditActions}>
+                                            <button
+                                              style={S.btnSm}
+                                              onClick={() => handleSaveCommentEdit(post, c)}
+                                            >
+                                              Save
+                                            </button>
+                                            <button style={S.btnSmGhost} onClick={cancelEditComment}>
+                                              Cancel
+                                            </button>
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <p style={{ ...S.commentBody, margin: 0 }}>{c.content}</p>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                            )}
+
+                            {/* New comment input */}
+                            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                              <input
+                                style={{
+                                  flex: 1,
+                                  background: "var(--bg-primary)",
+                                  border: "1px solid var(--border-color)",
+                                  borderRadius: "var(--radius-md)",
+                                  color: "var(--text-primary)",
+                                  outline: "none",
+                                  fontSize: "0.875rem",
+                                  fontFamily: "inherit",
+                                  padding: "8px 12px",
+                                }}
+                                placeholder="Write a comment…"
+                                value={commentDraft}
+                                onChange={(e) => setCommentDraft(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleAddComment(post);
+                                  }
+                                }}
+                              />
+                              <button
+                                style={commentDraft.trim() ? S.btnPost : S.btnPostDisabled}
+                                disabled={!commentDraft.trim()}
+                                onClick={() => handleAddComment(post)}
+                              >
+                                Post
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })
                 )}
               </div>
             </section>
@@ -1288,6 +1386,14 @@ export default function Dashboard() {
         onClose={() => setShowCodeEditor(false)}
         onInsert={handleInsertCode}
       />
+
+      {/* Saved Posts Modal */}
+      {showSavedPosts && (
+        <SavedPosts
+          onClose={() => setShowSavedPosts(false)}
+          onUnsave={(postId) => handleToggleSave(postId)}
+        />
+      )}
     </ProtectedRoute>
   );
 }
