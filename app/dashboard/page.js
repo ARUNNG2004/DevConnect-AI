@@ -13,6 +13,9 @@ import {
   orderBy,
   onSnapshot,
   serverTimestamp,
+  deleteDoc,
+  doc,
+  updateDoc,
 } from "firebase/firestore";
 
 const S = {
@@ -289,6 +292,12 @@ const S = {
     border: "2px solid var(--border-color)",
     background: "var(--bg-primary)",
   },
+  composerUserName: {
+  color: "var(--text-primary)",
+  fontWeight: 600,
+  fontSize: "0.95rem",
+  marginBottom: 6,
+},
   authorMeta: { display: "flex", flexDirection: "column" },
   authorName: { color: "var(--text-primary)", fontWeight: 600, fontSize: "0.95rem" },
   authorTitle: { color: "var(--text-muted)", fontSize: "0.75rem" },
@@ -324,7 +333,7 @@ const S = {
     padding: "8px 4px",
     marginTop: 4,
   },
-  postActionsGroup: { display: "flex", gap: 16 },
+  postActionsGroup: { display: "flex", gap: 3, },
   btnAction: {
     display: "flex",
     alignItems: "center",
@@ -441,6 +450,9 @@ export default function Dashboard() {
   const [error, setError] = useState("");
   const [posting, setPosting] = useState(false);
   const [showCodeEditor, setShowCodeEditor] = useState(false);
+  const [editingPostId, setEditingPostId] = useState(null);
+  const [editedContent, setEditedContent] = useState("");
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const handleInsertCode = (markdownBlock) => {
     setContent((prev) =>
@@ -478,6 +490,7 @@ export default function Dashboard() {
         comments: [],
       });
       setContent("");
+      setSelectedImage(null);
     } catch (err) {
       console.error(err);
       setError("Failed to create post. Please try again.");
@@ -485,6 +498,48 @@ export default function Dashboard() {
       setPosting(false);
     }
   };
+
+  const handleDeletePost = async (postId) => {
+  try {
+    await deleteDoc(doc(db, "posts", postId));
+  } catch (err) {
+    console.error(err);
+    setError("Failed to delete post.");
+  }
+};
+
+const handleEditPost = (post) => {
+  setEditingPostId(post.id);
+  setEditedContent(post.content);
+};
+
+const handleSaveEdit = async (postId) => {
+  try {
+    await updateDoc(doc(db, "posts", postId), {
+      content: editedContent,
+    });
+
+    setEditingPostId(null);
+    setEditedContent("");
+  } catch (err) {
+    console.error(err);
+    setError("Failed to update post.");
+  }
+};
+
+  const [selectedTags, setSelectedTags] = useState([
+  "#react",
+  "#rust",
+  "#typescript",
+  "#ai-agents",
+  "#css",
+]);
+
+const removeTag = (tagToRemove) => {
+  setSelectedTags(
+    selectedTags.filter((tag) => tag !== tagToRemove)
+  );
+};
 
   return (
     <ProtectedRoute>
@@ -533,30 +588,90 @@ export default function Dashboard() {
               {/* Composer */}
               <div style={S.composerCard}>
                 <div style={S.composerHeader}>
+                {user?.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt="Profile"
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                    }}
+                  />
+                ) : (
                   <div style={S.avatar}>
                     {user?.displayName?.charAt(0)?.toUpperCase() || "ME"}
                   </div>
+                )}
                   <div style={S.composerInputWrapper}>
+                    <div style={S.composerUserName}>
+                      {user?.displayName || "Community Member"}
+                    </div>
                     <textarea
                       style={S.composerTextarea}
                       placeholder="Share a coding question, project idea, or debugging help..."
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
                     />
+                    {selectedImage && (
+                      <img
+                        src={selectedImage}
+                        alt="Preview"
+                        style={{
+                          width: "100%",
+                          maxHeight: 250,
+                          objectFit: "cover",
+                          borderRadius: 8,
+                          marginTop: 10,
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
+                
 
                 <div style={S.composerTagsInput}>
-                  {["#react", "#rust", "#typescript", "#ai-agents", "#css"].map((tag, i) => (
-                    <span key={tag} style={i === 0 ? S.tagBadgeSelected : S.tagBadge}>{tag}</span>
+                  {selectedTags.map((tag) => (
+                    <span key={tag} style={S.tagBadgeSelected}>
+                      {tag}
+
+                      <button
+                        onClick={() => removeTag(tag)}
+                        style={{
+                          marginLeft: "6px",
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                color: "inherit",
+                        }}
+                      >
+                        ×
+                      </button>
+                    </span>
                   ))}
                 </div>
 
                 {error && <p style={{ color: "red", marginTop: 10 }}>{error}</p>}
+                <input
+                  type="file"
+                  accept="image/*"
+                  id="image-upload"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setSelectedImage(URL.createObjectURL(file));
+                    }
+                  }}
+                />
 
                 <div style={S.composerActions}>
                   <div style={S.composerTools}>
-                    <button style={S.composerToolBtn} title="Add Image">🖼️</button>
+                    <button
+                      style={S.composerToolBtn}
+                      title="Add Image"
+                      onClick={() => document.getElementById("image-upload").click()}>🖼️ </button>
                     <button
                       id="open-code-editor-btn"
                       style={S.composerToolBtn}
@@ -627,9 +742,47 @@ export default function Dashboard() {
 
                       <h2 style={S.postTitle}>Community Discussion</h2>
 
-                      <div style={S.postBody}>
-                        <p style={{ margin: 0 }}>{post.content}</p>
-                      </div>
+<div style={S.postBody}>
+  {editingPostId === post.id ? (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <textarea
+        value={editedContent}
+        onChange={(e) => setEditedContent(e.target.value)}
+        style={{
+          width: "100%",
+          minHeight: 100,
+          padding: 10,
+          borderRadius: 8,
+          border: "1px solid var(--border-color)",
+          background: "var(--bg-primary)",
+          color: "var(--text-primary)",
+          resize: "vertical",
+        }}
+      />
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <button
+          style={S.btnAction}
+          onClick={() => handleSaveEdit(post.id)}
+        >
+          💾 Save
+        </button>
+
+        <button
+          style={S.btnAction}
+          onClick={() => {
+            setEditingPostId(null);
+            setEditedContent("");
+          }}
+        >
+          ✖ Cancel
+        </button>
+      </div>
+    </div>
+  ) : (
+    <p style={{ margin: 0 }}>{post.content}</p>
+  )}
+</div>
 
                       <div style={S.postTags}>
                         <a href="#" style={S.postTag}>#community</a>
@@ -645,7 +798,26 @@ export default function Dashboard() {
                           </button>
                         </div>
                         <button style={S.btnAction}>🔖 Save</button>
-                      </div>
+
+                            {user?.uid === post.uid && (
+                            <>
+                              <button
+                                style={S.btnAction}
+                                onClick={() => handleEditPost(post)}
+                              >
+                                ✏️ Edit
+                              </button>
+                        
+                              <button
+                                style={S.btnAction}
+                                onClick={() => handleDeletePost(post.id)}
+                              >
+                                🗑 Delete
+                              </button>
+                            </>
+                            )}
+                          </div>
+
                     </article>
                   ))
                 )}
