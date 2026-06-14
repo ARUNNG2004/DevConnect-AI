@@ -7,6 +7,7 @@ import Navbar from "../../components/Navbar";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import CodeEditorModal from "../../components/CodeEditorModal";
 import { useAuth } from "../../context/AuthContext";
+import { useResponsive } from "../../hooks/useResponsive";
 import { db } from "../../lib/firebase";
 import AIDraftAssistant from "../../components/AIDraftAssistant";
 import {
@@ -30,16 +31,7 @@ const S = {
     minHeight: "100vh",
     backgroundColor: "var(--bg-primary)",
   },
-  mainLayout: {
-    display: "grid",
-    gridTemplateColumns: "240px 1fr 340px",
-    gap: 24,
-    maxWidth: 1440,
-    width: "100%",
-    margin: "0 auto",
-    padding: 24,
-    flex: 1,
-  },
+  // mainLayout is now computed dynamically based on breakpoint (see render)
   leftSidebar: {
     position: "sticky",
     top: 88,
@@ -185,7 +177,8 @@ const S = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 12,
+    paddingTop: 4,
+    marginTop: 2,
     borderTop: "1px solid var(--border-color)",
   },
   composerTools: { display: "flex", gap: 8 },
@@ -193,20 +186,21 @@ const S = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: 32,
-    height: 32,
+    width: 22,
+    height: 22,
     background: "transparent",
     border: "none",
     borderRadius: "var(--radius-sm)",
     color: "var(--text-muted)",
     cursor: "pointer",
+    fontSize: "0.8rem",
   },
   aiHelperToggle: {
     display: "flex",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
     cursor: "pointer",
-    fontSize: "0.85rem",
+    fontSize: "0.78rem",
     fontWeight: 500,
     color: "var(--text-muted)",
     userSelect: "none",
@@ -214,26 +208,28 @@ const S = {
   btnPost: {
     display: "flex",
     alignItems: "center",
-    gap: 8,
-    padding: "8px 18px",
+    gap: 6,
+    padding: "5px 12px",
     backgroundColor: "var(--accent-primary)",
     border: "none",
     borderRadius: "var(--radius-md)",
     color: "#000",
     fontWeight: 600,
+    fontSize: "0.8rem",
     cursor: "pointer",
     transition: "all var(--transition-fast)",
   },
   btnPostDisabled: {
     display: "flex",
     alignItems: "center",
-    gap: 8,
-    padding: "8px 18px",
+    gap: 6,
+    padding: "5px 12px",
     backgroundColor: "var(--border-color)",
     border: "none",
     borderRadius: "var(--radius-md)",
     color: "var(--text-muted)",
     fontWeight: 600,
+    fontSize: "0.8rem",
     cursor: "not-allowed",
   },
   feedFiltersBar: {
@@ -521,6 +517,7 @@ const S = {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { isMobile, isTablet } = useResponsive();
   const [content, setContent] = useState("");
   const [posts, setPosts] = useState([]);
   const [error, setError] = useState("");
@@ -754,47 +751,162 @@ export default function Dashboard() {
     }
   };
 
+  // ── Responsive layout grid ─────────────────────────────────────────────────
+  // Desktop  : 3-col (left nav | feed | right widgets)
+  // Tablet   : 2-col (feed | right widgets)
+  // Mobile   : 1-col (feed, then widgets stacked below)
+  const mainLayout = {
+    display: "grid",
+    gridTemplateColumns: isMobile
+      ? "1fr"
+      : isTablet
+      ? "1fr 300px"
+      : "240px 1fr 320px",
+    gap: isMobile ? 16 : 20,
+    maxWidth: 1440,
+    width: "100%",
+    margin: "0 auto",
+    flex: 1,
+    boxSizing: "border-box",
+    paddingTop: isMobile ? 12 : isTablet ? 16 : 24,
+    paddingRight: isMobile ? 12 : isTablet ? 16 : 24,
+    paddingBottom: isMobile ? 80 : isTablet ? 24 : 24,
+    paddingLeft: isMobile ? 12 : isTablet ? 16 : 24,
+    alignItems: "start",
+  };
+
+  // Mobile bottom nav items
+  const mobileNavItems = [
+    { icon: "▦", label: "Feed", active: true },
+    { icon: "📈", label: "Trending" },
+    { icon: "❔", label: "Q&A" },
+    { icon: "👥", label: "Collab" },
+    { icon: "🔖", label: "Saved" },
+  ];
+
+  // ── Shared widget JSX (reused in both sidebar and inline mobile section) ──
+  const RightWidgets = ({ inline }) => (
+    <div style={{
+      display: "flex",
+      flexDirection: inline ? "column" : "column",
+      gap: 16,
+      // Horizontal scroll row on mobile
+      ...(inline ? {
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+        gap: 12,
+      } : {}),
+    }}>
+      {/* AI Copilot promo */}
+      <div style={S.aiPromoWidget}>
+        <h3 style={S.widgetTitleAi}>
+          <span>Code Review Copilot</span>
+          <span style={S.pulsePoint} />
+        </h3>
+        <p style={S.aiPromoText}>
+          Let AI review your code changes, suggest performance improvements, and write documentation snippets.
+        </p>
+        <button style={S.btnAiCta}>
+          <span>Ask for AI Code Review</span>
+        </button>
+      </div>
+
+      {/* Trending Tags */}
+      <div style={S.sidebarWidget}>
+        <h3 style={S.widgetTitle}>Trending Tags</h3>
+        <div style={S.trendingList}>
+          {[
+            { tag: "#react", posts: "240 posts", new: "+24 new today" },
+            { tag: "#rust", posts: "182 posts", new: "+12 new today" },
+            { tag: "#ai-agents", posts: "110 posts", new: "+38 new today" },
+          ].map(({ tag, posts, new: newPosts }) => (
+            <div key={tag} style={S.trendingItem}>
+              <a href="#" style={S.trendingLink}>
+                <span>{tag}</span>
+                <span>{posts}</span>
+              </a>
+              <span style={S.trendingStats}>{newPosts}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Active Members */}
+      <div style={S.sidebarWidget}>
+        <h3 style={S.widgetTitle}>Active Members</h3>
+        <div style={S.membersList}>
+          {[
+            { initials: "SJ", name: "Sarah Jenkins", role: "Vercel", bg: "linear-gradient(135deg, #ec4899, #f43f5e)" },
+            { initials: "ER", name: "Elena Rostova", role: "AetherDB", bg: "linear-gradient(135deg, #10b981, #059669)" },
+          ].map(({ initials, name, role, bg }) => (
+            <div key={name} style={S.memberItem}>
+              <div style={S.memberMeta}>
+                <div style={{
+                  width: 28, height: 28, fontSize: "0.75rem",
+                  background: bg, borderRadius: "var(--radius-full)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "#000", fontWeight: 700,
+                }}>
+                  {initials}
+                </div>
+                <div>
+                  <div style={S.memberName}>{name}</div>
+                  <div style={S.memberRole}>{role}</div>
+                </div>
+              </div>
+              <div style={S.memberStatus}>
+                <span style={S.statusDotOnline} />
+                <span>Online</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <ProtectedRoute>
       <main style={{ backgroundColor: "var(--bg-primary)", minHeight: "100vh" }}>
         <div style={S.appContainer}>
           <Navbar variant="dashboard" />
 
-          <div style={S.mainLayout}>
-            {/* ── Left Sidebar ─────────────────────────────────────────── */}
-            <aside style={S.leftSidebar}>
-              <ul style={S.sidebarNavList}>
-                {[
-                  { icon: "▦", label: "Feed", active: true },
-                  { icon: "📈", label: "Trending" },
-                  { icon: "❔", label: "Questions" },
-                  { icon: "👥", label: "Collaborations" },
-                  { icon: "🔖", label: "Saved Posts" },
-                ].map(({ icon, label, active }) => (
-                  <li key={label}>
-                    <a href="#" style={active ? S.sidebarNavItemLinkActive : S.sidebarNavItemLink}>
-                      <span>{icon}</span>
-                      <span>{label}</span>
+          <div style={mainLayout}>
+            {/* ── Left Sidebar — desktop only ───────────────────────────── */}
+            {!isMobile && !isTablet && (
+              <aside style={S.leftSidebar}>
+                <ul style={S.sidebarNavList}>
+                  {[
+                    { icon: "▦", label: "Feed", active: true },
+                    { icon: "📈", label: "Trending" },
+                    { icon: "❔", label: "Questions" },
+                    { icon: "👥", label: "Collaborations" },
+                    { icon: "🔖", label: "Saved Posts" },
+                  ].map(({ icon, label, active }) => (
+                    <li key={label}>
+                      <a href="#" style={active ? S.sidebarNavItemLinkActive : S.sidebarNavItemLink}>
+                        <span>{icon}</span>
+                        <span>{label}</span>
+                      </a>
+                    </li>
+                  ))}
+                  <li>
+                    <a href="/" style={S.sidebarNavItemLink}>
+                      <span>ℹ️</span>
+                      <span>Features Tour</span>
                     </a>
                   </li>
-                ))}
-                <li>
-                  <a href="/" style={S.sidebarNavItemLink}>
-                    <span>ℹ️</span>
-                    <span>Features Tour</span>
+                </ul>
+                <div style={S.sidebarFooterCard}>
+                  <p style={S.sidebarFooterCardP}>
+                    Get instant AI reviews of your code repositories directly from GitHub.
+                  </p>
+                  <a href="/#features" style={S.btnSidebarCta}>
+                    Activate AI Copilot
                   </a>
-                </li>
-              </ul>
-
-              <div style={S.sidebarFooterCard}>
-                <p style={S.sidebarFooterCardP}>
-                  Get instant AI reviews of your code repositories directly from GitHub.
-                </p>
-                <a href="/#features" style={S.btnSidebarCta}>
-                  Activate AI Copilot
-                </a>
-              </div>
-            </aside>
+                </div>
+              </aside>
+            )}
 
             {/* ── Feed Column ──────────────────────────────────────────── */}
             <section style={S.feedColumn}>
@@ -883,51 +995,51 @@ export default function Dashboard() {
 
                 {error && <p style={{ color: "red", marginTop: 10 }}>{error}</p>}
 
-                <div style={S.composerActions}>
-                  <div style={S.composerTools}>
-                    <button style={S.composerToolBtn} title="Add Image">🖼️</button>
-                    <button
-                      id="open-code-editor-btn"
-                      style={S.composerToolBtn}
-                      title="Insert Code Block"
-                      onClick={() => setShowCodeEditor(true)}
-                    >
-                      {"</>"}
-                    </button>
-                  </div>
+                <div style={{ ...S.composerActions, gap: 8 }}>
+                  {/* Icon tools */}
+                  <button style={S.composerToolBtn} title="Add Image">🖼️</button>
+                  <button
+                    id="open-code-editor-btn"
+                    style={S.composerToolBtn}
+                    title="Insert Code Block"
+                    onClick={() => setShowCodeEditor(true)}
+                  >
+                    {"</>"}
+                  </button>
 
+                  {/* Divider */}
+                  <span style={{ width: 1, height: 18, background: "var(--border-color)", flexShrink: 0 }} />
+
+                  {/* AI Draft toggle — marginRight:auto pushes Post button to far right */}
                   <label
-                    style={S.aiHelperToggle}
+                    style={{ ...S.aiHelperToggle, marginRight: "auto" }}
                     onClick={() => setShowAiDraft((prev) => !prev)}
                   >
-                    <span
-                      style={{
-                        position: "relative",
-                        display: "inline-block",
-                        width: 36,
-                        height: 20,
-                        backgroundColor: showAiDraft ? "var(--accent-ai)" : "var(--border-color)",
-                        borderRadius: "var(--radius-full)",
-                        transition: "background-color 0.2s",
-                      }}
-                    >
-                      <span
-                        style={{
-                          position: "absolute",
-                          top: 2,
-                          left: showAiDraft ? 18 : 2,
-                          width: 16,
-                          height: 16,
-                          backgroundColor: "#fff",
-                          borderRadius: "50%",
-                          transition: "left 0.2s",
-                        }}
-                      />
+                    <span style={{
+                      position: "relative",
+                      display: "inline-block",
+                      width: 30,
+                      height: 16,
+                      backgroundColor: showAiDraft ? "var(--accent-ai)" : "var(--border-color)",
+                      borderRadius: "var(--radius-full)",
+                      transition: "background-color 0.2s",
+                      flexShrink: 0,
+                    }}>
+                      <span style={{
+                        position: "absolute",
+                        top: 3,
+                        left: showAiDraft ? 17 : 3,
+                        width: 10,
+                        height: 10,
+                        backgroundColor: "#fff",
+                        borderRadius: "50%",
+                        transition: "left 0.2s",
+                      }} />
                     </span>
-                    <span>Draft with AI Assistant</span>
-                    <span style={S.pulsePoint} />
+                    <span>AI Draft</span>
                   </label>
 
+                  {/* Post button */}
                   <button
                     style={posting || !content.trim() ? S.btnPostDisabled : S.btnPost}
                     onClick={handleCreatePost}
@@ -1209,77 +1321,55 @@ export default function Dashboard() {
                   ))
                 )}
               </div>
+              {/* ── Mobile-only: widgets inline below the feed ─────────── */}
+              {isMobile && (
+                <div style={{ marginTop: 8 }}>
+                  <RightWidgets inline />
+                </div>
+              )}
+              
             </section>
 
-            {/* ── Right Sidebar ─────────────────────────────────────────── */}
-            <aside style={S.rightSidebar}>
-              <div style={S.aiPromoWidget}>
-                <h3 style={S.widgetTitleAi}>
-                  <span>Code Review Copilot</span>
-                  <span style={S.pulsePoint} />
-                </h3>
-                <p style={S.aiPromoText}>
-                  Let AI review your code changes, suggest performance improvements, and write documentation snippets.
-                </p>
-                <button style={S.btnAiCta}>
-                  <span>Ask for AI Code Review</span>
-                </button>
-              </div>
-
-              <div style={S.sidebarWidget}>
-                <h3 style={S.widgetTitle}>Trending Tags</h3>
-                <div style={S.trendingList}>
-                  {trendingTags.length === 0 ? (
-                    <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: 0 }}>
-                      No tags yet — be the first to tag a post!
-                    </p>
-                  ) : (
-                    trendingTags.map(({ tag, posts, new: newPosts }) => (
-                      <div key={tag} style={S.trendingItem}>
-                        <a href="#" style={S.trendingLink}>
-                          <span>{tag}</span>
-                          <span>{posts}</span>
-                        </a>
-                        <span style={S.trendingStats}>{newPosts}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <div style={S.sidebarWidget}>
-                <h3 style={S.widgetTitle}>Active Members</h3>
-                <div style={S.membersList}>
-                  {[
-                    { initials: "SJ", name: "Sarah Jenkins", role: "Vercel", bg: "linear-gradient(135deg, #ec4899, #f43f5e)" },
-                    { initials: "ER", name: "Elena Rostova", role: "AetherDB", bg: "linear-gradient(135deg, #10b981, #059669)" },
-                  ].map(({ initials, name, role, bg }) => (
-                    <div key={name} style={S.memberItem}>
-                      <div style={S.memberMeta}>
-                        <div style={{
-                          width: 28, height: 28, fontSize: "0.75rem",
-                          background: bg, borderRadius: "var(--radius-full)",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          color: "#000", fontWeight: 700,
-                        }}>
-                          {initials}
-                        </div>
-                        <div>
-                          <div style={S.memberName}>{name}</div>
-                          <div style={S.memberRole}>{role}</div>
-                        </div>
-                      </div>
-                      <div style={S.memberStatus}>
-                        <span style={S.statusDotOnline} />
-                        <span>Online</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </aside>
+            {/* ── Right Sidebar — tablet & desktop ──────────────────────── */}
+            {!isMobile && (
+              <aside style={{
+                ...S.rightSidebar,
+                // On tablet: not sticky, just a normal flow column
+                ...(isTablet ? { position: "relative", top: "auto", height: "auto", overflowY: "visible" } : {}),
+              }}>
+                <RightWidgets />
+              </aside>
+            )}
           </div>
         </div>
+
+        {/* ── Mobile Bottom Navigation Bar ────────────────────────────── */}
+        <nav className="mobile-bottom-nav" style={{ justifyContent: "space-evenly", alignItems: "center" }}>
+          {mobileNavItems.map(({ icon, label, active }) => (
+            <button
+              key={label}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 3,
+                flex: 1,
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: "6px 0",
+                color: active ? "var(--accent-primary)" : "var(--text-muted)",
+                fontSize: "0.65rem",
+                fontWeight: active ? 700 : 500,
+                fontFamily: "inherit",
+              }}
+            >
+              <span style={{ fontSize: "1.3rem", lineHeight: 1 }}>{icon}</span>
+              <span>{label}</span>
+            </button>
+          ))}
+        </nav>
       </main>
 
       {/*Code Editor Modal*/}

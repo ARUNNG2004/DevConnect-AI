@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useResponsive } from '../hooks/useResponsive';
 
 export default function CodeReview() {
   const [code, setCode] = useState('');
@@ -8,6 +9,7 @@ export default function CodeReview() {
   const [review, setReview] = useState(null);
   const [activeTab, setActiveTab] = useState('results');
   const [copied, setCopied] = useState(false);
+  const { isMobile, isTablet } = useResponsive();
 
   const handleReview = async () => {
     if (!code.trim()) {
@@ -61,19 +63,19 @@ export default function CodeReview() {
   };
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
-      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '24px 16px' : '40px 20px' }}>
+      <div style={{ textAlign: 'center', marginBottom: isMobile ? '24px' : '40px' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #a855f7, #3b82f6)', color: 'white', padding: '8px 20px', borderRadius: '999px', fontSize: '14px', marginBottom: '16px' }}>
           <span>🤖</span>
           <span>AI Code Review</span>
         </div>
-        <h2 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '12px' }}>
+        <h2 style={{ fontSize: isMobile ? '22px' : '32px', fontWeight: 'bold', marginBottom: '12px' }}>
           Instant <span style={{ background: 'linear-gradient(135deg, #a855f7, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Code Analysis</span>
         </h2>
         <p style={{ color: '#9ca3af' }}>Security, performance, and best practice checks</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: (isMobile || isTablet) ? '1fr' : '1fr 1fr', gap: isMobile ? '16px' : '24px' }}>
         {/* Input Section */}
         <div style={{ background: '#1f2937', borderRadius: '16px', padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>

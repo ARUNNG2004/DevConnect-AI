@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
+import { useResponsive } from "../../hooks/useResponsive";
 
 const S = {
   navbar: {
@@ -115,6 +116,7 @@ export default function Profile() {
   const { user, logout, loading } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
   const router = useRouter();
+  const { isMobile } = useResponsive();
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
@@ -146,11 +148,11 @@ export default function Profile() {
   return (
     <main style={S.main}>
       {/* Navbar */}
-      <header style={S.navbar}>
-        <Link href="/dashboard" style={S.navBrand}>
-          <span>🧠 DevConnect AI</span>
+      <header style={{ ...S.navbar, padding: isMobile ? "0 12px" : "0 24px" }}>
+        <Link href="/dashboard" style={{ ...S.navBrand, fontSize: isMobile ? "1rem" : "1.2rem" }}>
+          <span>🧠{!isMobile && " DevConnect AI"}</span>
         </Link>
-        <div style={S.navActions}>
+        <div style={{ ...S.navActions, gap: isMobile ? 8 : 16 }}>
           <button
             onClick={toggleTheme}
             style={{
@@ -171,15 +173,17 @@ export default function Profile() {
           >
             {isDarkMode ? "☀️" : "🌙"}
           </button>
-          <Link href="/dashboard" style={S.btnNavBack}>← Dashboard</Link>
-          <button onClick={handleLogout} style={S.btnLogout} title="Logout">
-            🚪 Logout
+          <Link href="/dashboard" style={{ ...S.btnNavBack, padding: isMobile ? "8px 10px" : "8px 16px", fontSize: isMobile ? "0.8rem" : "inherit" }}>
+            {isMobile ? "←" : "← Dashboard"}
+          </Link>
+          <button onClick={handleLogout} style={{ ...S.btnLogout, padding: isMobile ? "8px 10px" : "8px 16px", fontSize: isMobile ? "0.8rem" : "inherit" }} title="Logout">
+            {isMobile ? "🚪" : "🚪 Logout"}
           </button>
         </div>
       </header>
 
       {/* Content */}
-      <div style={S.container}>
+      <div style={{ ...S.container, padding: isMobile ? "0 16px" : "0 24px" }}>
         {/* Profile Card */}
         <div style={S.cardSmall}>
           <div style={S.avatarLarge}>

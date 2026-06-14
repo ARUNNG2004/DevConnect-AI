@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "../../context/ThemeContext";
 import Link from "next/link";
 import { Sparkles, Mail, KeyRound, Sun, Moon } from "lucide-react";
+import { useResponsive } from "../../hooks/useResponsive";
 
 export default function Login() {
   const { loginWithGoogle, loginWithGithub, loginWithEmail, user } = useAuth();
-  const { isDarkMode, toggleTheme } = useTheme(); // Extracted toggleTheme to put it inside the card
+  const { isDarkMode, toggleTheme } = useTheme(); 
   const router = useRouter();
+  const { isMobile } = useResponsive();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -66,7 +68,7 @@ export default function Login() {
     position: "relative",
     overflow: "hidden",
     background: "var(--bg-primary)",
-    padding: "12px 16px",
+    padding: isMobile ? "16px 12px" : "12px 16px",
   };
 
   const glowStyle = {
@@ -79,7 +81,7 @@ export default function Login() {
   const cardStyle = {
     maxWidth: "28rem",
     width: "100%",
-    padding: "2.5rem",
+    padding: isMobile ? "1.75rem 1.25rem" : "2.5rem",
     background: "var(--bg-secondary)",
     backdropFilter: "blur(12px)",
     borderRadius: "1.5rem",
@@ -87,6 +89,7 @@ export default function Login() {
     border: "1px solid var(--border-color)",
     position: "relative",
     zIndex: 10,
+    boxSizing: "border-box",
   };
 
   // Added style for the theme toggle button placed absolute inside the login card

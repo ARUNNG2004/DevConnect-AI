@@ -138,3 +138,60 @@ input, textarea, button, div, a, span, p, h1, h2, h3, h4, h5, h6 {
   33%       { transform: translate(30px, -20px) scale(1.05); }
   66%       { transform: translate(-20px, 10px) scale(0.95); }
 }
+
+/* Mobile & Touch Improvements */
+
+/* Improve tap responsiveness on mobile */
+button, a, [role="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Ensure minimum 44px tap targets on mobile */
+@media (max-width: 640px) {
+  button {
+    min-height: 40px;
+  }
+}
+
+/* Safe area padding for notched devices (iPhone X+) */
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Smooth scrolling on iOS */
+html {
+  -webkit-overflow-scrolling: touch;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Hide scrollbar on mobile nav drawers */
+.mobile-nav-drawer {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.mobile-nav-drawer::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  display: none;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  padding: 8px env(safe-area-inset-right, 0) calc(8px + env(safe-area-inset-bottom, 0)) env(safe-area-inset-left, 0);
+}
+
+@media (max-width: 1024px) {
+  .mobile-bottom-nav {
+    display: flex;
+  }
+}
