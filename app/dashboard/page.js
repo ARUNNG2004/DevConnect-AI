@@ -21,9 +21,6 @@ import {
   orderBy,
   onSnapshot,
   serverTimestamp,
-  deleteDoc,
-  doc,
-  updateDoc,
   arrayUnion,
   arrayRemove,
 } from "firebase/firestore";
@@ -563,7 +560,6 @@ export default function Dashboard() {
   const [error, setError] = useState("");
   const [posting, setPosting] = useState(false);
   const [showAiDraft, setShowAiDraft] = useState(false);
-  const [selectedTags, setSelectedTags] = useState([]);
   const [customTag, setCustomTag] = useState("");
   const [openCommentsFor, setOpenCommentsFor] = useState(null);
   const [commentDraft, setCommentDraft] = useState("");
