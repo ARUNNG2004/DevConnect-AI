@@ -16,6 +16,7 @@ A next-generation developer community platform where engineers share knowledge, 
 - [Prerequisites](#-prerequisites)
 - [Local Setup](#-local-setup)
 - [Firebase Setup](#-firebase-setup)
+- [Sarvam AI Setup](#-sarvam-ai-setup)
 - [Environment Variables](#-environment-variables)
 - [Running the App](#-running-the-app)
 - [App Routes](#-app-routes)
@@ -26,7 +27,7 @@ A next-generation developer community platform where engineers share knowledge, 
 
 ## 🚀 Overview
 
-DevConnect AI is a full-stack developer community platform that unifies fragmented developer workflows — discussions, Q&A, collaboration, and AI-powered coding help — into a single ecosystem.
+DevConnect AI is a full-stack developer community platform that unifies fragmented developer workflows — discussions, Q&A, collaboration, and AI-powered drafting help — into a single ecosystem.
 
 ---
 
@@ -48,11 +49,12 @@ There's no single platform that combines all of this with built-in AI assistance
 |---|---|
 | Framework | Next.js 16 (App Router) |
 | UI Library | React 19 |
-| Styling | Tailwind CSS v4 |
+| Styling | Tailwind CSS v4 / CSS variables |
 | Authentication | Firebase Auth (Google + GitHub OAuth) |
 | Database | Firestore (Firebase) |
 | Icons | lucide-react |
-| AI (Planned) | OpenAI / Google Gemini |
+| Markdown Rendering | react-markdown + remark-gfm |
+| AI | Sarvam AI (Chat Completions API) |
 
 ---
 
@@ -64,18 +66,20 @@ There's no single platform that combines all of this with built-in AI assistance
 - User profile auto-saved to Firestore on first login
 - Protected routes — unauthenticated users redirected to `/login`
 
-### 🧑‍💻 Community (UI Ready)
-- Developer feed with posts
-- Like, comment, and reply system
-- Trending discussions
-- Questions board
-- Collaborations section
-- Saved posts
+### 🧑‍💻 Community
+- Developer feed with posts (create, edit, delete)
+- Real-time updates via Firestore `onSnapshot`
+- Like / unlike posts
+- Comment system — add, edit, and delete comments
+- Markdown-rendered posts and code blocks (headings, lists, inline code, fenced code blocks)
+- In-line code editor for inserting formatted code snippets into posts
+- Trending discussions, Questions board, Collaborations, Saved Posts (UI scaffolded)
 
-### 🤖 AI Features (Work in Progress)
-- Smart post suggestions
-- Automated replies
-- Code review assistance
+### 🤖 AI Features
+- **Draft with AI Assistant**: describe what you're stuck on, and the AI rewrites it into a clear, well-structured discussion post — including problem description, what you've tried, and what kind of help you're looking for.
+  - The assistant is intentionally scoped to **only help phrase the question** — it does not solve the problem or provide answers, keeping discussions genuinely open for the community to respond to.
+  - Powered by the **Sarvam AI** chat completions API via a secure server-side Next.js API route (`/api/ai-draft`).
+- Code Review Copilot (UI ready, backend in progress)
 
 ---
 
@@ -87,6 +91,11 @@ DevConnect-AI/
 │   ├── layout.js               # Root layout with AuthProvider
 │   ├── page.js                 # Landing page (features tour)
 │   ├── globals.css             # Global styles
+│   ├── api/
+│   │   ├── ai-draft/
+│   │   │   └── route.js        # Sarvam AI-powered "Draft with AI" endpoint
+│   │   └── code-review/
+│   │       └── route.js        # Code review endpoint (in progress)
 │   ├── dashboard/
 │   │   └── page.js             # Main community feed (protected)
 │   ├── login/
@@ -98,7 +107,13 @@ DevConnect-AI/
 │   └── settings/
 │       └── page.js             # Settings page
 ├── components/
-│   └── ProtectedRoute.js       # Auth guard — redirects to /login if not authenticated
+│   ├── AIDraftAssistant.js     # "Draft with AI" prompt box + Sarvam AI call
+│   ├── CodeEditorModal.js      # Modal for inserting formatted code blocks
+│   ├── CodeReview.js           # Code review UI component
+│   ├── Navbar.js
+│   ├── ProtectedRoute.js       # Auth guard — redirects to /login if not authenticated
+│   ├── ScrollToTop.js
+│   └── ThemeToggle.js
 ├── context/
 │   └── AuthContext.js          # Firebase auth state (Google + GitHub login/logout)
 ├── lib/
@@ -119,6 +134,7 @@ Make sure you have the following installed before setting up:
 - **npm** v9 or higher (comes with Node.js)
 - A **Firebase** account → [console.firebase.google.com](https://console.firebase.google.com)
 - A **GitHub OAuth App** (for GitHub login) → [github.com/settings/developers](https://github.com/settings/developers)
+- A **Sarvam AI** API key → [sarvam.ai](https://www.sarvam.ai) (for "Draft with AI Assistant")
 
 Check your versions:
 ```bash
@@ -147,17 +163,21 @@ cd DevConnect-AI
 npm install
 ```
 
+This installs all dependencies, including `react-markdown` and `remark-gfm` used for rendering post content.
+
 ### 4. Set up Firebase (see section below)
 
-### 5. Create your `.env.local` file
+### 5. Set up Sarvam AI (see section below)
+
+### 6. Create your `.env.local` file
 
 ```bash
 cp .env.example .env.local
 ```
 
-Or create it manually and fill in your Firebase credentials (see [Environment Variables](#-environment-variables)).
+Or create it manually and fill in your Firebase and Sarvam AI credentials (see [Environment Variables](#-environment-variables)).
 
-### 6. Run the development server
+### 7. Run the development server
 
 ```bash
 npm run dev
@@ -199,22 +219,41 @@ From **Project Settings → Your Apps → SDK setup and configuration**, copy al
 
 ---
 
+## 🤖 Sarvam AI Setup
+
+The **Draft with AI Assistant** feature uses the [Sarvam AI](https://www.sarvam.ai) chat completions API.
+
+1. Sign up at [sarvam.ai](https://www.sarvam.ai) and generate an API key from your dashboard.
+2. Add the key to `.env.local` as `SARVAM_API_KEY` (see below).
+3. The API key is used **server-side only**, via `app/api/ai-draft/route.js` — it is never exposed to the browser.
+4. If you see a `model deprecated` error, check Sarvam's docs for the current supported model names (e.g. `sarvam-30b`, `sarvam-105b`) and update the `model` field in `route.js` accordingly.
+
+> ⚠️ Never commit your Sarvam API key. If a key is ever accidentally committed or shared, rotate it immediately from the Sarvam dashboard.
+
+---
+
 ## 🔑 Environment Variables
 
 Create a `.env.local` file in the root of the project with the following keys:
 
 ```env
+# Firebase
 NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+
+# Sarvam AI (server-side only — do NOT prefix with NEXT_PUBLIC_)
+SARVAM_API_KEY=your_sarvam_api_key
 ```
 
 > ⚠️ Never commit `.env.local` to Git. It is already added to `.gitignore`.
+>
+> Restart your dev server (`npm run dev`) after adding or changing any environment variable — Next.js only loads `.env.local` on startup.
 
-All values are available in **Firebase Console → Project Settings → Your Apps → SDK config**.
+All Firebase values are available in **Firebase Console → Project Settings → Your Apps → SDK config**.
 
 ---
 
@@ -239,6 +278,7 @@ All values are available in **Firebase Console → Project Settings → Your App
 | `/dashboard` | Main community feed | ✅ Yes |
 | `/profile` | User profile page | ✅ Yes |
 | `/settings` | Settings page | ✅ Yes |
+| `/api/ai-draft` | Server-side Sarvam AI draft endpoint | N/A (API route) |
 
 > Protected routes automatically redirect unauthenticated users to `/login`.
 
@@ -255,14 +295,17 @@ This project is under active development. Here's what's done and what's still in
 | GitHub OAuth login/signup | ✅ Done |
 | User saved to Firestore on first login | ✅ Done |
 | Protected routes | ✅ Done |
-| Dashboard UI (feed, sidebar, layout) | ✅ Done (static) |
-| Firestore CRUD for posts | 🔄 In Progress |
-| Like / Comment / Reply system | 🔄 In Progress |
-| Real-time updates | 🔄 In Progress |
-| AI post suggestions | 🔜 Planned |
-| AI auto-replies | 🔜 Planned |
-| Code review assistance | 🔜 Planned |
+| Dashboard UI (feed, sidebar, layout) | ✅ Done |
+| Firestore CRUD for posts | ✅ Done |
+| Like system | ✅ Done |
+| Comment system (add/edit/delete) | ✅ Done |
+| Real-time updates | ✅ Done |
+| Markdown rendering for posts (headings, lists, code blocks) | ✅ Done |
+| In-post code editor / inserter | ✅ Done |
+| **Draft with AI Assistant** (Sarvam AI, question-only mode) | ✅ Done |
+| AI Code Review (Copilot) | 🔄 In Progress |
 | User profile page | 🔜 Planned |
+| Trending / Questions / Collaborations / Saved Posts (functional) | 🔜 Planned |
 
 ---
 

@@ -1,14 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { useEffect, useState, useMemo } from "react";
 import Navbar from "../../components/Navbar";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import CodeEditorModal from "../../components/CodeEditorModal";
+import SavedPosts from "../../components/SavedPosts";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../lib/firebase";
+import AIDraftAssistant from "../../components/AIDraftAssistant";
 import {
   collection,
   addDoc,
+  deleteDoc,
+  updateDoc,
+  setDoc,
+  doc,
   query,
   orderBy,
   onSnapshot,
@@ -16,6 +24,8 @@ import {
   deleteDoc,
   doc,
   updateDoc,
+  arrayUnion,
+  arrayRemove,
 } from "firebase/firestore";
 
 const S = {
@@ -35,7 +45,6 @@ const S = {
     padding: 24,
     flex: 1,
   },
-  // ── Left Sidebar ────────────────────────────────────────────────────────────
   leftSidebar: {
     position: "sticky",
     top: 88,
@@ -62,6 +71,13 @@ const S = {
     fontWeight: 500,
     textDecoration: "none",
     transition: "all var(--transition-fast)",
+    border: "none",
+    background: "transparent",
+    width: "100%",
+    textAlign: "left",
+    fontSize: "inherit",
+    fontFamily: "inherit",
+    cursor: "pointer",
   },
   sidebarNavItemLinkActive: {
     display: "flex",
@@ -73,6 +89,12 @@ const S = {
     fontWeight: 600,
     textDecoration: "none",
     backgroundColor: "var(--accent-primary-alpha)",
+    border: "none",
+    width: "100%",
+    textAlign: "left",
+    fontSize: "inherit",
+    fontFamily: "inherit",
+    cursor: "pointer",
   },
   sidebarFooterCard: {
     backgroundColor: "var(--bg-secondary)",
@@ -97,14 +119,12 @@ const S = {
     textDecoration: "none",
     transition: "all var(--transition-fast)",
   },
-  // ── Feed Column ─────────────────────────────────────────────────────────────
   feedColumn: {
     display: "flex",
     flexDirection: "column",
     gap: 20,
     minWidth: 0,
   },
-  // Composer
   composerCard: {
     backgroundColor: "var(--bg-secondary)",
     border: "1px solid var(--border-color)",
@@ -234,7 +254,6 @@ const S = {
     fontWeight: 600,
     cursor: "not-allowed",
   },
-  // Feed filters
   feedFiltersBar: {
     display: "flex",
     borderBottom: "1px solid var(--border-color)",
@@ -263,7 +282,6 @@ const S = {
     whiteSpace: "nowrap",
     borderBottom: "2px solid var(--accent-primary)",
   },
-  // Discussion cards
   discussionCard: {
     backgroundColor: "var(--bg-secondary)",
     border: "1px solid var(--border-color)",
@@ -347,7 +365,102 @@ const S = {
     padding: "6px 10px",
     borderRadius: "var(--radius-sm)",
   },
-  // ── Right Sidebar ────────────────────────────────────────────────────────────
+  btnActionActive: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    background: "transparent",
+    border: "none",
+    color: "var(--accent-primary)",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+    fontWeight: 600,
+    padding: "6px 10px",
+    borderRadius: "var(--radius-sm)",
+  },
+  btnActionDanger: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    background: "transparent",
+    border: "none",
+    color: "#f87171",
+    cursor: "pointer",
+    fontSize: "0.8rem",
+    fontWeight: 500,
+    padding: "4px 6px",
+    borderRadius: "var(--radius-sm)",
+  },
+  // Comment styles
+  commentItem: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    padding: "10px 12px",
+    backgroundColor: "var(--bg-primary)",
+    borderRadius: "var(--radius-md)",
+    border: "1px solid var(--border-color)",
+  },
+  commentHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  commentAuthor: {
+    fontWeight: 600,
+    fontSize: "0.85rem",
+    color: "var(--text-primary)",
+  },
+  commentMeta: {
+    display: "flex",
+    alignItems: "center",
+    gap: 4,
+    fontSize: "0.75rem",
+    color: "var(--text-muted)",
+  },
+  commentBody: {
+    fontSize: "0.875rem",
+    color: "var(--text-secondary)",
+    lineHeight: 1.5,
+  },
+  commentEditTextarea: {
+    width: "100%",
+    background: "var(--bg-secondary)",
+    border: "1px solid var(--border-color)",
+    borderRadius: "var(--radius-sm)",
+    color: "var(--text-primary)",
+    outline: "none",
+    fontSize: "0.875rem",
+    fontFamily: "inherit",
+    padding: "6px 8px",
+    resize: "vertical",
+    minHeight: 60,
+  },
+  commentEditActions: {
+    display: "flex",
+    gap: 6,
+    marginTop: 4,
+  },
+  btnSm: {
+    padding: "4px 12px",
+    backgroundColor: "var(--accent-primary)",
+    border: "none",
+    borderRadius: "var(--radius-sm)",
+    color: "#000",
+    fontWeight: 600,
+    fontSize: "0.8rem",
+    cursor: "pointer",
+  },
+  btnSmGhost: {
+    padding: "4px 12px",
+    backgroundColor: "transparent",
+    border: "1px solid var(--border-color)",
+    borderRadius: "var(--radius-sm)",
+    color: "var(--text-muted)",
+    fontWeight: 500,
+    fontSize: "0.8rem",
+    cursor: "pointer",
+  },
   rightSidebar: {
     position: "sticky",
     top: 88,
@@ -449,23 +562,39 @@ export default function Dashboard() {
   const [posts, setPosts] = useState([]);
   const [error, setError] = useState("");
   const [posting, setPosting] = useState(false);
+  const [showAiDraft, setShowAiDraft] = useState(false);
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [customTag, setCustomTag] = useState("");
+  const [openCommentsFor, setOpenCommentsFor] = useState(null);
+  const [commentDraft, setCommentDraft] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editContent, setEditContent] = useState("");
+  // Track which comment is being edited: { postId, createdAt }
   const [showCodeEditor, setShowCodeEditor] = useState(false);
-  const [editingPostId, setEditingPostId] = useState(null);
-  const [editedContent, setEditedContent] = useState("");
+
   const [selectedImage, setSelectedImage] = useState(null);
 
-  const handleInsertCode = (markdownBlock) => {
-    setContent((prev) =>
-      prev ? prev + "\n" + markdownBlock : markdownBlock
-    );
-  };
+  const [editingComment, setEditingComment] = useState(null);
+  const [editingCommentDraft, setEditingCommentDraft] = useState("");
+
+
+  // ── Saved posts ──────────────────────────────────────────────────────────
+  const [savedPostIds, setSavedPostIds] = useState([]);
+  const [showSavedPosts, setShowSavedPosts] = useState(false);
+
+  const availableTags = [
+    "#react", "#nextjs", "#javascript", "#typescript",
+    "#frontend", "#backend", "#nodejs", "#python",
+    "#rust", "#go", "#ai-agents", "#machine-learning",
+    "#css", "#devops", "#docker", "#database",
+  ];
 
   useEffect(() => {
     const postsQuery = query(collection(db, "posts"), orderBy("timestamp", "desc"));
     const unsubscribe = onSnapshot(
       postsQuery,
       (snapshot) => {
-        setPosts(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+        setPosts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
       },
       (err) => {
         console.error(err);
@@ -474,6 +603,65 @@ export default function Dashboard() {
     );
     return () => unsubscribe();
   }, []);
+
+  // Listen to the current user's saved post IDs (stored on users/{uid})
+  useEffect(() => {
+    if (!user) {
+      setSavedPostIds([]);
+      return;
+    }
+    const unsubscribe = onSnapshot(
+      doc(db, "users", user.uid),
+      (snap) => {
+        const data = snap.data();
+        setSavedPostIds(data?.savedPosts || []);
+      },
+      (err) => {
+        console.error(err);
+      }
+    );
+    return () => unsubscribe();
+  }, [user]);
+
+  // ── Trending tags, computed live from posts ────────────────────────────────
+  const trendingTags = useMemo(() => {
+    const counts = {};
+    const newToday = {};
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    posts.forEach((post) => {
+      const postDate = post.timestamp?.toDate ? post.timestamp.toDate() : null;
+      const isToday = postDate && postDate >= startOfToday;
+
+      (post.tags || []).forEach((tag) => {
+        counts[tag] = (counts[tag] || 0) + 1;
+        if (isToday) newToday[tag] = (newToday[tag] || 0) + 1;
+      });
+    });
+
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([tag, count]) => ({
+        tag,
+        posts: `${count} post${count === 1 ? "" : "s"}`,
+        new: newToday[tag] ? `+${newToday[tag]} new today` : "No new posts today",
+      }));
+  }, [posts]);
+
+  // ── Post actions ────────────────────────────────────────────────────────────
+
+  const addCustomTag = () => {
+    let tag = customTag.trim();
+    if (!tag) return;
+    if (!tag.startsWith("#")) tag = "#" + tag;
+    tag = tag.toLowerCase().replace(/\s+/g, "-");
+    if (!selectedTags.includes(tag)) {
+      setSelectedTags((prev) => [...prev, tag]);
+    }
+    setCustomTag("");
+  };
 
   const handleCreatePost = async () => {
     if (!content.trim() || !user) return;
@@ -485,12 +673,15 @@ export default function Dashboard() {
         displayName: user.displayName || user.email || "Anonymous User",
         photoURL: user.photoURL || "",
         content: content.trim(),
+        tags: selectedTags,
         timestamp: serverTimestamp(),
         likes: 0,
+        likedBy: [],
         comments: [],
       });
       setContent("");
       setSelectedImage(null);
+      setSelectedTags([]);
     } catch (err) {
       console.error(err);
       setError("Failed to create post. Please try again.");
@@ -498,34 +689,6 @@ export default function Dashboard() {
       setPosting(false);
     }
   };
-
-  const handleDeletePost = async (postId) => {
-  try {
-    await deleteDoc(doc(db, "posts", postId));
-  } catch (err) {
-    console.error(err);
-    setError("Failed to delete post.");
-  }
-};
-
-const handleEditPost = (post) => {
-  setEditingPostId(post.id);
-  setEditedContent(post.content);
-};
-
-const handleSaveEdit = async (postId) => {
-  try {
-    await updateDoc(doc(db, "posts", postId), {
-      content: editedContent,
-    });
-
-    setEditingPostId(null);
-    setEditedContent("");
-  } catch (err) {
-    console.error(err);
-    setError("Failed to update post.");
-  }
-};
 
   const [selectedTags, setSelectedTags] = useState([
   "#react",
@@ -540,6 +703,153 @@ const removeTag = (tagToRemove) => {
     selectedTags.filter((tag) => tag !== tagToRemove)
   );
 };
+  const handleInsertCode = (codeBlock) => {
+    setContent((prev) => prev + (prev ? "\n\n" : "") + codeBlock);
+    setShowCodeEditor(false);
+  };
+
+  const toggleTag = (tag) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const handleToggleLike = async (post) => {
+    if (!user) return;
+    const liked = (post.likedBy || []).includes(user.uid);
+    try {
+      await updateDoc(doc(db, "posts", post.id), {
+        likedBy: liked ? arrayRemove(user.uid) : arrayUnion(user.uid),
+        likes: (post.likedBy || []).length + (liked ? -1 : 1),
+      });
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update like. Please try again.");
+    }
+  };
+
+  // Toggle save/unsave a post for the current user.
+  // Saved post IDs are stored in users/{uid}.savedPosts (array of post IDs).
+  const handleToggleSave = async (postId) => {
+    if (!user) return;
+    const isSaved = savedPostIds.includes(postId);
+    try {
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          savedPosts: isSaved ? arrayRemove(postId) : arrayUnion(postId),
+        },
+        { merge: true }
+      );
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update saved posts. Please try again.");
+    }
+  };
+
+  const handleDeletePost = async (postId) => {
+    if (!window.confirm("Delete this post? This cannot be undone.")) return;
+    try {
+      await deleteDoc(doc(db, "posts", postId));
+    } catch (err) {
+      console.error(err);
+      setError("Failed to delete post. Please try again.");
+    }
+  };
+
+  const startEdit = (post) => {
+    setEditingId(post.id);
+    setEditContent(post.content);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditContent("");
+  };
+
+  const handleSaveEdit = async (postId) => {
+    if (!editContent.trim()) return;
+    try {
+      await updateDoc(doc(db, "posts", postId), {
+        content: editContent.trim(),
+        edited: true,
+      });
+      setEditingId(null);
+      setEditContent("");
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update post. Please try again.");
+    }
+  };
+
+  // ── Comment actions ─────────────────────────────────────────────────────────
+
+  const toggleComments = (postId) => {
+    setOpenCommentsFor((prev) => (prev === postId ? null : postId));
+    setCommentDraft("");
+    setEditingComment(null);
+  };
+
+  const handleAddComment = async (post) => {
+    if (!commentDraft.trim() || !user) return;
+    const newComment = {
+      uid: user.uid,
+      displayName: user.displayName || user.email || "Anonymous User",
+      content: commentDraft.trim(),
+      createdAt: Date.now(),
+      edited: false,
+    };
+    try {
+      await updateDoc(doc(db, "posts", post.id), {
+        comments: arrayUnion(newComment),
+      });
+      setCommentDraft("");
+    } catch (err) {
+      console.error(err);
+      setError("Failed to add comment. Please try again.");
+    }
+  };
+
+  // Edit: replace the old comment object with an updated one via array replace
+  const startEditComment = (comment) => {
+    setEditingComment({ postId: comment._postId, createdAt: comment.createdAt });
+    setEditingCommentDraft(comment.content);
+  };
+
+  const cancelEditComment = () => {
+    setEditingComment(null);
+    setEditingCommentDraft("");
+  };
+
+  const handleSaveCommentEdit = async (post, oldComment) => {
+    if (!editingCommentDraft.trim()) return;
+    const updatedComments = (post.comments || []).map((c) =>
+      c.createdAt === oldComment.createdAt && c.uid === oldComment.uid
+        ? { ...c, content: editingCommentDraft.trim(), edited: true }
+        : c
+    );
+    try {
+      await updateDoc(doc(db, "posts", post.id), { comments: updatedComments });
+      setEditingComment(null);
+      setEditingCommentDraft("");
+    } catch (err) {
+      console.error(err);
+      setError("Failed to edit comment. Please try again.");
+    }
+  };
+
+  const handleDeleteComment = async (post, comment) => {
+    if (!window.confirm("Delete this comment?")) return;
+    const updatedComments = (post.comments || []).filter(
+      (c) => !(c.createdAt === comment.createdAt && c.uid === comment.uid)
+    );
+    try {
+      await updateDoc(doc(db, "posts", post.id), { comments: updatedComments });
+    } catch (err) {
+      console.error(err);
+      setError("Failed to delete comment. Please try again.");
+    }
+  };
 
   return (
     <ProtectedRoute>
@@ -556,7 +866,6 @@ const removeTag = (tagToRemove) => {
                   { icon: "📈", label: "Trending" },
                   { icon: "❔", label: "Questions" },
                   { icon: "👥", label: "Collaborations" },
-                  { icon: "🔖", label: "Saved Posts" },
                 ].map(({ icon, label, active }) => (
                   <li key={label}>
                     <a href="#" style={active ? S.sidebarNavItemLinkActive : S.sidebarNavItemLink}>
@@ -565,6 +874,26 @@ const removeTag = (tagToRemove) => {
                     </a>
                   </li>
                 ))}
+                <li>
+                  <button
+                    style={S.sidebarNavItemLink}
+                    onClick={() => setShowSavedPosts(true)}
+                  >
+                    <span>🔖</span>
+                    <span>Saved Posts</span>
+                    {savedPostIds.length > 0 && (
+                      <span
+                        style={{
+                          marginLeft: "auto",
+                          fontSize: "0.7rem",
+                          color: "var(--text-muted)",
+                        }}
+                      >
+                        {savedPostIds.length}
+                      </span>
+                    )}
+                  </button>
+                </li>
                 <li>
                   <a href="/" style={S.sidebarNavItemLink}>
                     <span>ℹ️</span>
@@ -632,24 +961,70 @@ const removeTag = (tagToRemove) => {
                 
 
                 <div style={S.composerTagsInput}>
-                  {selectedTags.map((tag) => (
-                    <span key={tag} style={S.tagBadgeSelected}>
+                  {availableTags.map((tag) => (
+                    <span
+                      key={tag}
+                      onClick={() => toggleTag(tag)}
+                      style={{
+                        ...(selectedTags.includes(tag) ? S.tagBadgeSelected : S.tagBadge),
+                        cursor: "pointer",
+                        userSelect: "none",
+                      }}
+                    >
                       {tag}
-
-                      <button
-                        onClick={() => removeTag(tag)}
-                        style={{
-                          marginLeft: "6px",
-                          border: "none",
-                          background: "transparent",
-                          cursor: "pointer",
-                color: "inherit",
-                        }}
-                      >
-                        ×
-                      </button>
                     </span>
                   ))}
+
+                  {/* Show any custom tags the user has added that aren't in the default list */}
+                  {selectedTags
+                    .filter((tag) => !availableTags.includes(tag))
+                    .map((tag) => (
+                      <span
+                        key={tag}
+                        onClick={() => toggleTag(tag)}
+                        style={{ ...S.tagBadgeSelected, cursor: "pointer", userSelect: "none" }}
+                      >
+                        {tag} ✕
+                      </span>
+                    ))}
+
+                  {/* Custom tag input */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <input
+                      value={customTag}
+                      onChange={(e) => setCustomTag(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addCustomTag();
+                        }
+                      }}
+                      placeholder="Add tag..."
+                      style={{
+                        background: "transparent",
+                        border: "1px solid var(--border-color)",
+                        borderRadius: "var(--radius-full)",
+                        color: "var(--text-primary)",
+                        outline: "none",
+                        fontSize: "0.8rem",
+                        padding: "4px 10px",
+                        width: 90,
+                      }}
+                    />
+                    <button
+                      onClick={addCustomTag}
+                      type="button"
+                      style={{
+                        ...S.tagBadge,
+                        cursor: "pointer",
+                        padding: "4px 10px",
+                        border: "1px solid var(--accent-primary)",
+                        color: "var(--accent-primary)",
+                      }}
+                    >
+                      + Add
+                    </button>
+                  </div>
                 </div>
 
                 {error && <p style={{ color: "red", marginTop: 10 }}>{error}</p>}
@@ -682,16 +1057,34 @@ const removeTag = (tagToRemove) => {
                     </button>
                   </div>
 
-                  <label style={S.aiHelperToggle}>
-                    <input type="checkbox" defaultChecked style={{ display: "none" }} />
-                    <span style={{
-                      position: "relative",
-                      display: "inline-block",
-                      width: 36,
-                      height: 20,
-                      backgroundColor: "var(--accent-ai)",
-                      borderRadius: "var(--radius-full)",
-                    }} />
+                  <label
+                    style={S.aiHelperToggle}
+                    onClick={() => setShowAiDraft((prev) => !prev)}
+                  >
+                    <span
+                      style={{
+                        position: "relative",
+                        display: "inline-block",
+                        width: 36,
+                        height: 20,
+                        backgroundColor: showAiDraft ? "var(--accent-ai)" : "var(--border-color)",
+                        borderRadius: "var(--radius-full)",
+                        transition: "background-color 0.2s",
+                      }}
+                    >
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: 2,
+                          left: showAiDraft ? 18 : 2,
+                          width: 16,
+                          height: 16,
+                          backgroundColor: "#fff",
+                          borderRadius: "50%",
+                          transition: "left 0.2s",
+                        }}
+                      />
+                    </span>
                     <span>Draft with AI Assistant</span>
                     <span style={S.pulsePoint} />
                   </label>
@@ -704,6 +1097,15 @@ const removeTag = (tagToRemove) => {
                     {posting ? "Posting..." : "Post Discussion"}
                   </button>
                 </div>
+
+                {showAiDraft && (
+                  <AIDraftAssistant
+                    onInsert={(draft) => {
+                      setContent((prev) => (prev ? prev + "\n\n" + draft : draft));
+                      setShowAiDraft(false);
+                    }}
+                  />
+                )}
               </div>
 
               {/* Feed filters */}
@@ -718,115 +1120,269 @@ const removeTag = (tagToRemove) => {
                 {posts.length === 0 ? (
                   <p style={{ color: "var(--text-muted)" }}>No posts yet. Create the first post!</p>
                 ) : (
-                  posts.map((post) => (
-                    <article style={S.discussionCard} key={post.id}>
-                      <div style={S.cardHeader}>
-                        <div style={S.authorInfo}>
-                          <div style={S.authorAvatar}>
-                            {post.displayName?.charAt(0)?.toUpperCase() || "U"}
+                  posts.map((post) => {
+                    const isSaved = savedPostIds.includes(post.id);
+                    return (
+                      <article style={S.discussionCard} key={post.id}>
+                        <div style={S.cardHeader}>
+                          <div style={S.authorInfo}>
+                            <div style={S.authorAvatar}>
+                              {post.displayName?.charAt(0)?.toUpperCase() || "U"}
+                            </div>
+                            <div style={S.authorMeta}>
+                              <span style={S.authorName}>{post.displayName || "Anonymous User"}</span>
+                              <span style={S.authorTitle}>Community Member</span>
+                            </div>
                           </div>
-                          <div style={S.authorMeta}>
-                            <span style={S.authorName}>{post.displayName || "Anonymous User"}</span>
-                            <span style={S.authorTitle}>Community Member</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span style={S.categoryTag}>Discussion</span>
+                            <span style={S.postTimestamp}>
+                              {post.timestamp?.toDate
+                                ? post.timestamp.toDate().toLocaleString()
+                                : "Just now"}
+                              {post.edited ? " (edited)" : ""}
+                            </span>
                           </div>
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <span style={S.categoryTag}>Discussion</span>
-                          <span style={S.postTimestamp}>
-                            {post.timestamp?.toDate
-                              ? post.timestamp.toDate().toLocaleString()
-                              : "Just now"}
-                          </span>
+
+                        <h2 style={S.postTitle}>Community Discussion</h2>
+
+                        {editingId === post.id ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            <textarea
+                              style={S.composerTextarea}
+                              value={editContent}
+                              onChange={(e) => setEditContent(e.target.value)}
+                            />
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button style={S.btnPost} onClick={() => handleSaveEdit(post.id)}>Save</button>
+                              <button style={S.btnAction} onClick={cancelEdit}>Cancel</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={S.postBody}>
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                code({ className, children, ...props }) {
+                                  const isInline = !className;
+                                  return isInline ? (
+                                    <code
+                                      style={{
+                                        background: "var(--bg-primary)",
+                                        padding: "2px 6px",
+                                        borderRadius: 4,
+                                        fontSize: "0.85em",
+                                      }}
+                                      {...props}
+                                    >
+                                      {children}
+                                    </code>
+                                  ) : (
+                                    <pre
+                                      style={{
+                                        background: "var(--bg-primary)",
+                                        border: "1px solid var(--border-color)",
+                                        borderRadius: "var(--radius-md)",
+                                        padding: 12,
+                                        overflowX: "auto",
+                                        fontSize: "0.85em",
+                                      }}
+                                    >
+                                      <code className={className} {...props}>
+                                        {children}
+                                      </code>
+                                    </pre>
+                                  );
+                                },
+                                p({ children }) {
+                                  return <p style={{ margin: "0 0 10px 0", lineHeight: 1.6 }}>{children}</p>;
+                                },
+                                h1({ children }) {
+                                  return <h3 style={{ margin: "12px 0 6px" }}>{children}</h3>;
+                                },
+                                h2({ children }) {
+                                  return <h3 style={{ margin: "12px 0 6px" }}>{children}</h3>;
+                                },
+                                h3({ children }) {
+                                  return <h4 style={{ margin: "10px 0 6px" }}>{children}</h4>;
+                                },
+                                ul({ children }) {
+                                  return <ul style={{ paddingLeft: 20, margin: "0 0 10px 0" }}>{children}</ul>;
+                                },
+                                ol({ children }) {
+                                  return <ol style={{ paddingLeft: 20, margin: "0 0 10px 0" }}>{children}</ol>;
+                                },
+                                li({ children }) {
+                                  return <li style={{ marginBottom: 4 }}>{children}</li>;
+                                },
+                              }}
+                            >
+                              {post.content}
+                            </ReactMarkdown>
+                          </div>
+                        )}
+
+                        <div style={S.postTags}>
+                          {post.tags && post.tags.length > 0 ? (
+                            post.tags.map((tag) => (
+                              <a href="#" style={S.postTag} key={tag}>{tag}</a>
+                            ))
+                          ) : (
+                            <a href="#" style={S.postTag}>#community</a>
+                          )}
                         </div>
-                      </div>
 
-                      <h2 style={S.postTitle}>Community Discussion</h2>
-
-<div style={S.postBody}>
-  {editingPostId === post.id ? (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <textarea
-        value={editedContent}
-        onChange={(e) => setEditedContent(e.target.value)}
-        style={{
-          width: "100%",
-          minHeight: 100,
-          padding: 10,
-          borderRadius: 8,
-          border: "1px solid var(--border-color)",
-          background: "var(--bg-primary)",
-          color: "var(--text-primary)",
-          resize: "vertical",
-        }}
-      />
-
-      <div style={{ display: "flex", gap: 10 }}>
-        <button
-          style={S.btnAction}
-          onClick={() => handleSaveEdit(post.id)}
-        >
-          💾 Save
-        </button>
-
-        <button
-          style={S.btnAction}
-          onClick={() => {
-            setEditingPostId(null);
-            setEditedContent("");
-          }}
-        >
-          ✖ Cancel
-        </button>
-      </div>
-    </div>
-  ) : (
-    <p style={{ margin: 0 }}>{post.content}</p>
-  )}
-</div>
-
-                      <div style={S.postTags}>
-                        <a href="#" style={S.postTag}>#community</a>
-                      </div>
-
-                      <div style={S.postActions}>
-                        <div style={S.postActionsGroup}>
-                          <button style={S.btnAction}>
-                            ♡ <span>{post.likes || 0}</span> Likes
+                        <div style={S.postActions}>
+                          <div style={S.postActionsGroup}>
+                            <button style={S.btnAction} onClick={() => handleToggleLike(post)}>
+                              {(post.likedBy || []).includes(user?.uid) ? "❤️" : "♡"}{" "}
+                              <span>{post.likes || 0}</span> Likes
+                            </button>
+                            <button style={S.btnAction} onClick={() => toggleComments(post.id)}>
+                              💬 <span>{post.comments?.length || 0}</span> Comments
+                            </button>
+                          </div>
+                          <button
+                            style={isSaved ? S.btnActionActive : S.btnAction}
+                            onClick={() => handleToggleSave(post.id)}
+                            title={isSaved ? "Remove from saved" : "Save post"}
+                          >
+                            {isSaved ? "🔖 Saved" : "🔖 Save"}
                           </button>
-                          <button style={S.btnAction}>
-                            💬 <span>{post.comments?.length || 0} Comments</span>
-                          </button>
+                          {user?.uid === post.uid && (
+                            <div style={{ display: "flex", gap: 4 }}>
+                              <button style={S.btnAction} onClick={() => startEdit(post)}>✏️ Edit</button>
+                              <button style={S.btnAction} onClick={() => handleDeletePost(post.id)}>🗑️ Delete</button>
+                            </div>
+                          )}
                         </div>
-                        <button style={S.btnAction}>🔖 Save</button>
 
-                            {user?.uid === post.uid && (
-                            <>
-                              <button
-                                style={S.btnAction}
-                                onClick={() => handleEditPost(post)}
-                              >
-                                ✏️ Edit
-                              </button>
-                        
-                              <button
-                                style={S.btnAction}
-                                onClick={() => handleDeletePost(post.id)}
-                              >
-                                🗑 Delete
-                              </button>
-                            </>
+                        {/* ── Comments panel ──────────────────────────────── */}
+                        {openCommentsFor === post.id && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4, borderTop: "1px solid var(--border-color)", paddingTop: 14 }}>
+
+                            {/* Comment list */}
+                            {(post.comments || []).length === 0 ? (
+                              <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: 0 }}>
+                                No comments yet. Be the first!
+                              </p>
+                            ) : (
+                              (post.comments || [])
+                                .slice()
+                                .sort((a, b) => a.createdAt - b.createdAt)
+                                .map((c) => {
+                                  const isEditingThis =
+                                    editingComment?.postId === post.id &&
+                                    editingComment?.createdAt === c.createdAt;
+                                  const isOwner = user?.uid === c.uid;
+
+                                  return (
+                                    <div key={`${c.uid}-${c.createdAt}`} style={S.commentItem}>
+                                      <div style={S.commentHeader}>
+                                        <span style={S.commentAuthor}>{c.displayName}</span>
+                                        <div style={S.commentMeta}>
+                                          <span>
+                                            {new Date(c.createdAt).toLocaleString(undefined, {
+                                              month: "short", day: "numeric",
+                                              hour: "2-digit", minute: "2-digit",
+                                            })}
+                                          </span>
+                                          {c.edited && (
+                                            <span style={{ fontStyle: "italic" }}>(edited)</span>
+                                          )}
+                                          {isOwner && !isEditingThis && (
+                                            <>
+                                              <button
+                                                style={S.btnActionDanger}
+                                                onClick={() => startEditComment({ ...c, _postId: post.id })}
+                                                title="Edit comment"
+                                              >
+                                                ✏️
+                                              </button>
+                                              <button
+                                                style={S.btnActionDanger}
+                                                onClick={() => handleDeleteComment(post, c)}
+                                                title="Delete comment"
+                                              >
+                                                🗑️
+                                              </button>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {isEditingThis ? (
+                                        <>
+                                          <textarea
+                                            style={S.commentEditTextarea}
+                                            value={editingCommentDraft}
+                                            onChange={(e) => setEditingCommentDraft(e.target.value)}
+                                            autoFocus
+                                          />
+                                          <div style={S.commentEditActions}>
+                                            <button
+                                              style={S.btnSm}
+                                              onClick={() => handleSaveCommentEdit(post, c)}
+                                            >
+                                              Save
+                                            </button>
+                                            <button style={S.btnSmGhost} onClick={cancelEditComment}>
+                                              Cancel
+                                            </button>
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <p style={{ ...S.commentBody, margin: 0 }}>{c.content}</p>
+                                      )}
+                                    </div>
+                                  );
+                                })
                             )}
-                          </div>
 
-                    </article>
-                  ))
+                            {/* New comment input */}
+                            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                              <input
+                                style={{
+                                  flex: 1,
+                                  background: "var(--bg-primary)",
+                                  border: "1px solid var(--border-color)",
+                                  borderRadius: "var(--radius-md)",
+                                  color: "var(--text-primary)",
+                                  outline: "none",
+                                  fontSize: "0.875rem",
+                                  fontFamily: "inherit",
+                                  padding: "8px 12px",
+                                }}
+                                placeholder="Write a comment…"
+                                value={commentDraft}
+                                onChange={(e) => setCommentDraft(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleAddComment(post);
+                                  }
+                                }}
+                              />
+                              <button
+                                style={commentDraft.trim() ? S.btnPost : S.btnPostDisabled}
+                                disabled={!commentDraft.trim()}
+                                onClick={() => handleAddComment(post)}
+                              >
+                                Post
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })
                 )}
               </div>
             </section>
 
             {/* ── Right Sidebar ─────────────────────────────────────────── */}
             <aside style={S.rightSidebar}>
-              {/* AI Promo Widget */}
               <div style={S.aiPromoWidget}>
                 <h3 style={S.widgetTitleAi}>
                   <span>Code Review Copilot</span>
@@ -840,27 +1396,27 @@ const removeTag = (tagToRemove) => {
                 </button>
               </div>
 
-              {/* Trending Tags */}
               <div style={S.sidebarWidget}>
                 <h3 style={S.widgetTitle}>Trending Tags</h3>
                 <div style={S.trendingList}>
-                  {[
-                    { tag: "#react", posts: "240 posts", new: "+24 new today" },
-                    { tag: "#rust", posts: "182 posts", new: "+12 new today" },
-                    { tag: "#ai-agents", posts: "110 posts", new: "+38 new today" },
-                  ].map(({ tag, posts, new: newPosts }) => (
-                    <div key={tag} style={S.trendingItem}>
-                      <a href="#" style={S.trendingLink}>
-                        <span>{tag}</span>
-                        <span>{posts}</span>
-                      </a>
-                      <span style={S.trendingStats}>{newPosts}</span>
-                    </div>
-                  ))}
+                  {trendingTags.length === 0 ? (
+                    <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", margin: 0 }}>
+                      No tags yet — be the first to tag a post!
+                    </p>
+                  ) : (
+                    trendingTags.map(({ tag, posts, new: newPosts }) => (
+                      <div key={tag} style={S.trendingItem}>
+                        <a href="#" style={S.trendingLink}>
+                          <span>{tag}</span>
+                          <span>{posts}</span>
+                        </a>
+                        <span style={S.trendingStats}>{newPosts}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
-              {/* Active Members */}
               <div style={S.sidebarWidget}>
                 <h3 style={S.widgetTitle}>Active Members</h3>
                 <div style={S.membersList}>
@@ -902,6 +1458,14 @@ const removeTag = (tagToRemove) => {
         onClose={() => setShowCodeEditor(false)}
         onInsert={handleInsertCode}
       />
+
+      {/* Saved Posts Modal */}
+      {showSavedPosts && (
+        <SavedPosts
+          onClose={() => setShowSavedPosts(false)}
+          onUnsave={(postId) => handleToggleSave(postId)}
+        />
+      )}
     </ProtectedRoute>
   );
 }
