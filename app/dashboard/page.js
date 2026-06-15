@@ -7,6 +7,7 @@ import Navbar from "../../components/Navbar";
 import ProtectedRoute from "../../components/ProtectedRoute";
 import CodeEditorModal from "../../components/CodeEditorModal";
 import SavedPosts from "../../components/SavedPosts";
+import FeatureTour from "../../components/FeatureTour";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../lib/firebase";
 import AIDraftAssistant from "../../components/AIDraftAssistant";
@@ -547,6 +548,8 @@ const S = {
   },
 };
 
+const FEATURE_TOUR_KEY = "devconnect_feature_tour_seen";
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [content, setContent] = useState("");
@@ -569,12 +572,36 @@ export default function Dashboard() {
   const [savedPostIds, setSavedPostIds] = useState([]);
   const [showSavedPosts, setShowSavedPosts] = useState(false);
 
+  // ── Feature tour ─────────────────────────────────────────────────────────
+  const [showFeatureTour, setShowFeatureTour] = useState(false);
+
   const availableTags = [
     "#react", "#nextjs", "#javascript", "#typescript",
     "#frontend", "#backend", "#nodejs", "#python",
     "#rust", "#go", "#ai-agents", "#machine-learning",
     "#css", "#devops", "#docker", "#database",
   ];
+
+  // Show the feature tour automatically on a user's first visit
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem(FEATURE_TOUR_KEY);
+      if (!seen) {
+        setShowFeatureTour(true);
+      }
+    } catch {
+      // localStorage unavailable (e.g. SSR) - ignore
+    }
+  }, []);
+
+  const closeFeatureTour = () => {
+    setShowFeatureTour(false);
+    try {
+      localStorage.setItem(FEATURE_TOUR_KEY, "true");
+    } catch {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     const postsQuery = query(collection(db, "posts"), orderBy("timestamp", "desc"));
@@ -849,6 +876,7 @@ export default function Dashboard() {
                 ))}
                 <li>
                   <button
+                    id="saved-posts-nav"
                     style={S.sidebarNavItemLink}
                     onClick={() => setShowSavedPosts(true)}
                   >
@@ -868,10 +896,13 @@ export default function Dashboard() {
                   </button>
                 </li>
                 <li>
-                  <a href="/" style={S.sidebarNavItemLink}>
+                  <button
+                    style={S.sidebarNavItemLink}
+                    onClick={() => setShowFeatureTour(true)}
+                  >
                     <span>ℹ️</span>
                     <span>Features Tour</span>
-                  </a>
+                  </button>
                 </li>
               </ul>
 
@@ -888,7 +919,7 @@ export default function Dashboard() {
             {/* ── Feed Column ──────────────────────────────────────────── */}
             <section style={S.feedColumn}>
               {/* Composer */}
-              <div style={S.composerCard}>
+              <div id="composer-card" style={S.composerCard}>
                 <div style={S.composerHeader}>
                   <div style={S.avatar}>
                     {user?.displayName?.charAt(0)?.toUpperCase() || "ME"}
@@ -903,7 +934,7 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div style={S.composerTagsInput}>
+                <div id="composer-tags" style={S.composerTagsInput}>
                   {availableTags.map((tag) => (
                     <span
                       key={tag}
@@ -986,6 +1017,7 @@ export default function Dashboard() {
                   </div>
 
                   <label
+                    id="ai-draft-toggle"
                     style={S.aiHelperToggle}
                     onClick={() => setShowAiDraft((prev) => !prev)}
                   >
@@ -1048,7 +1080,7 @@ export default function Dashboard() {
                 {posts.length === 0 ? (
                   <p style={{ color: "var(--text-muted)" }}>No posts yet. Create the first post!</p>
                 ) : (
-                  posts.map((post) => {
+                  posts.map((post, postIndex) => {
                     const isSaved = savedPostIds.includes(post.id);
                     return (
                       <article style={S.discussionCard} key={post.id}>
@@ -1161,7 +1193,7 @@ export default function Dashboard() {
                           )}
                         </div>
 
-                        <div style={S.postActions}>
+                        <div id={postIndex === 0 ? "post-actions-0" : undefined} style={S.postActions}>
                           <div style={S.postActionsGroup}>
                             <button style={S.btnAction} onClick={() => handleToggleLike(post)}>
                               {(post.likedBy || []).includes(user?.uid) ? "❤️" : "♡"}{" "}
@@ -1311,7 +1343,7 @@ export default function Dashboard() {
 
             {/* ── Right Sidebar ─────────────────────────────────────────── */}
             <aside style={S.rightSidebar}>
-              <div style={S.aiPromoWidget}>
+              <div id="ai-copilot-widget" style={S.aiPromoWidget}>
                 <h3 style={S.widgetTitleAi}>
                   <span>Code Review Copilot</span>
                   <span style={S.pulsePoint} />
@@ -1324,7 +1356,7 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              <div style={S.sidebarWidget}>
+              <div id="trending-tags-widget" style={S.sidebarWidget}>
                 <h3 style={S.widgetTitle}>Trending Tags</h3>
                 <div style={S.trendingList}>
                   {trendingTags.length === 0 ? (
@@ -1394,6 +1426,9 @@ export default function Dashboard() {
           onUnsave={(postId) => handleToggleSave(postId)}
         />
       )}
+
+      {/* Feature Tour Overlay */}
+      {showFeatureTour && <FeatureTour onClose={closeFeatureTour} />}
     </ProtectedRoute>
   );
 }
