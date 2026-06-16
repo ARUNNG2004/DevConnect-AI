@@ -550,6 +550,7 @@ const FEATURE_TOUR_KEY = "devconnect_feature_tour_seen";
 export default function Dashboard() {
   const { user } = useAuth();
   const { isMobile, isTablet } = useResponsive();
+  const [searchQuery, setSearchQuery] = useState("");
   const [content, setContent] = useState("");
   const [posts, setPosts] = useState([]);
   const [error, setError] = useState("");
@@ -704,6 +705,17 @@ export default function Dashboard() {
         return posts; // "all"
     }
   }, [posts, activeFilter, user?.uid]);
+
+  const searchedPosts = useMemo(() => {
+  const q = searchQuery.trim().toLowerCase();
+  if (!q) return filteredPosts;
+  return filteredPosts.filter((post) => {
+    const inContent = post.content?.toLowerCase().includes(q);
+    const inAuthor  = post.displayName?.toLowerCase().includes(q);
+    const inTags    = (post.tags || []).some((tag) => tag.toLowerCase().includes(q));
+    return inContent || inAuthor || inTags;
+  });
+}, [filteredPosts, searchQuery]);
 
   // ── Post actions ────────────────────────────────────────────────────────────
 
@@ -1020,7 +1032,11 @@ export default function Dashboard() {
     <ProtectedRoute>
       <main style={{ backgroundColor: "var(--bg-primary)", minHeight: "100vh" }}>
         <div style={S.appContainer}>
-          <Navbar variant="dashboard" />
+          <Navbar
+  variant="dashboard"
+  searchValue={searchQuery}
+  onSearchChange={setSearchQuery}
+/>
 
           <div style={mainLayout}>
             {/* ── Left Sidebar — desktop only (bottom nav used on mobile/tablet) ── */}
@@ -1274,36 +1290,73 @@ export default function Dashboard() {
                     >
                       <span>{icon}</span>
                       <span>{label}</span>
-                      {isActive && key !== "all" && (
-                        <span style={{
-                          marginLeft: 2,
-                          background: "var(--accent-primary)",
-                          color: "#000",
-                          borderRadius: "var(--radius-full)",
-                          fontSize: "0.65rem",
-                          fontWeight: 700,
-                          padding: "1px 6px",
-                        }}>
-                          {filteredPosts.length}
-                        </span>
-                      )}
+                      {isActive && (
+  <span style={{
+    marginLeft: 2,
+    background: "var(--accent-primary)",
+    color: "#000",
+    borderRadius: "var(--radius-full)",
+    fontSize: "0.65rem",
+    fontWeight: 700,
+    padding: "1px 6px",
+  }}>
+    {searchedPosts.length}
+  </span>
+)}
                     </button>
                   );
                 })}
               </div>
 
+
+              {/* ── Search results summary ── */}
+{searchQuery.trim() && (
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "8px 12px",
+    backgroundColor: "var(--bg-secondary)",
+    border: "1px solid var(--border-color)",
+    borderRadius: "var(--radius-md)",
+    fontSize: "0.85rem",
+  }}>
+    <span style={{ color: "var(--text-secondary)" }}>
+      🔍 <strong style={{ color: "var(--text-primary)" }}>{searchedPosts.length}</strong>
+      {searchedPosts.length === 1 ? " result" : " results"} for{" "}
+      <strong style={{ color: "var(--accent-primary)" }}>"{searchQuery}"</strong>
+    </span>
+    <button
+      onClick={() => setSearchQuery("")}
+      style={{
+        background: "transparent",
+        border: "none",
+        color: "var(--text-muted)",
+        cursor: "pointer",
+        fontSize: "0.8rem",
+        padding: "2px 6px",
+        borderRadius: "var(--radius-sm)",
+      }}
+    >
+      ✕ Clear
+    </button>
+  </div>
+)}
+
               {/* Posts */}
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                {filteredPosts.length === 0 ? (
-                  <p style={{ color: "var(--text-muted)" }}>
-                    {activeFilter === "mine"
-                      ? "You haven't posted anything yet."
-                      : activeFilter === "recent"
-                      ? "No posts in the last 24 hours."
-                      : "No posts yet. Create the first post!"}
-                  </p>
+                {searchedPosts.length === 0 ? (
+  <p style={{ color: "var(--text-muted)" }}>
+    {searchQuery.trim()
+      ? `No posts found for "${searchQuery}".`
+      : activeFilter === "mine"
+      ? "You haven't posted anything yet."
+      : activeFilter === "recent"
+      ? "No posts in the last 24 hours."
+      : "No posts yet. Create the first post!"}
+  </p>
                 ) : (
-                  filteredPosts.map((post, postIndex) => {
+                  searchedPosts.map((post, postIndex) => {
                     const isSaved = savedPostIds.includes(post.id);
                     return (
                       <article style={S.discussionCard} key={post.id}>

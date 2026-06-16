@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
@@ -224,7 +224,7 @@ const S = {
   },
   navSearchInput: {
     width: "100%",
-    padding: "8px 16px 8px 40px",
+    padding: "8px 36px 8px 40px",
     backgroundColor: "var(--bg-tertiary)",
     border: "1px solid var(--border-color)",
     borderRadius: "var(--radius-full)",
@@ -232,6 +232,7 @@ const S = {
     outline: "none",
     fontSize: "0.875rem",
     transition: "all var(--transition-fast)",
+    boxSizing: "border-box",
   },
   navSearchIcon: {
     position: "absolute",
@@ -240,6 +241,23 @@ const S = {
     transform: "translateY(-50%)",
     color: "var(--text-muted)",
     pointerEvents: "none",
+  },
+  navSearchClearBtn: {
+    position: "absolute",
+    right: 8,
+    top: "50%",
+    transform: "translateY(-50%)",
+    width: 22,
+    height: 22,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "transparent",
+    border: "none",
+    color: "var(--text-muted)",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+    borderRadius: "var(--radius-full)",
   },
   navActions: {
     display: "flex",
@@ -285,12 +303,46 @@ const S = {
   },
 };
 
-export default function Navbar({ variant = "landing" }) {
+export default function Navbar({ variant = "landing", searchValue = "", onSearchChange }) {
   const { user, logout } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
   const router = useRouter();
   const { isMobile, isTablet } = useResponsive();
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Local input value lets typing feel instant; we debounce before
+  // bubbling up to the parent so we don't re-filter the feed on every
+  // single keystroke for longer queries.
+  const [localSearch, setLocalSearch] = useState(searchValue);
+  const debounceRef = useRef(null);
+
+  // Keep local input in sync if the parent resets search (e.g. clear button
+  // triggered from elsewhere, or navigating away and back).
+  useEffect(() => {
+    setLocalSearch(searchValue);
+  }, [searchValue]);
+
+  const handleSearchInput = (e) => {
+    const value = e.target.value;
+    setLocalSearch(value);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      onSearchChange?.(value);
+    }, 200); // short debounce — feels live, avoids thrashing on every keypress
+  };
+
+  const clearSearch = () => {
+    setLocalSearch("");
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    onSearchChange?.("");
+  };
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -441,7 +493,7 @@ export default function Navbar({ variant = "landing" }) {
         {!isMobile && <span>DevConnect AI</span>}
       </Link>
 
-      {/* Search bar — hidden on mobile */}
+      {/* Search bar — hidden on mobile (mobile uses the icon button below) */}
       {!isMobile && (
         <div style={S.navSearch}>
           <span style={S.navSearchIcon}>🔍</span>
@@ -449,14 +501,32 @@ export default function Navbar({ variant = "landing" }) {
             type="text"
             placeholder={isTablet ? "Search..." : "Search discussions, tags, error codes..."}
             style={S.navSearchInput}
+            value={localSearch}
+            onChange={handleSearchInput}
+            aria-label="Search discussions, tags, and authors"
           />
+          {localSearch && (
+            <button
+              type="button"
+              onClick={clearSearch}
+              style={S.navSearchClearBtn}
+              title="Clear search"
+              aria-label="Clear search"
+            >
+              ✕
+            </button>
+          )}
         </div>
       )}
 
       <div style={S.navActions}>
-        {/* Search icon on mobile */}
+        {/* Search icon on mobile — expands into an inline input */}
         {isMobile && (
-          <button style={S.btnIcon} title="Search">🔍</button>
+          <MobileSearchToggle
+            value={localSearch}
+            onChange={handleSearchInput}
+            onClear={clearSearch}
+          />
         )}
 
         {!isMobile && (
@@ -504,5 +574,65 @@ export default function Navbar({ variant = "landing" }) {
         )}
       </div>
     </header>
+  );
+}
+
+// Mobile: tapping the icon expands an inline search field instead of
+// navigating anywhere, so search still works on small screens.
+function MobileSearchToggle({ value, onChange, onClear }) {
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
+
+  if (!open) {
+    return (
+      <button style={S.btnIcon} title="Search" onClick={() => setOpen(true)}>
+        🔍
+      </button>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 64,
+        background: "var(--bg-secondary)",
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "0 12px",
+        zIndex: 60,
+        borderBottom: "1px solid var(--border-color)",
+      }}
+    >
+      <span style={{ color: "var(--text-muted)" }}>🔍</span>
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={onChange}
+        placeholder="Search discussions, tags..."
+        style={{ ...S.navSearchInput, padding: "8px 10px", flex: 1 }}
+        autoFocus
+      />
+      <button
+        type="button"
+        style={S.btnIcon}
+        onClick={() => {
+          onClear();
+          setOpen(false);
+        }}
+        aria-label="Close search"
+      >
+        ✕
+      </button>
+    </div>
   );
 }
