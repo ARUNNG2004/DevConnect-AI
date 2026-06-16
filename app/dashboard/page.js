@@ -19,12 +19,13 @@ import {
   setDoc,
   doc,
   query,
+  where,
   orderBy,
   onSnapshot,
   serverTimestamp,
   arrayUnion,
   arrayRemove,
-} from "firebase/firestore";
+} from "firebase/firestore";          // imported 'where' for raeltime active member
 
 const S = {
   appContainer: {
@@ -721,6 +722,8 @@ export default function Dashboard() {
   const [commentDraft, setCommentDraft] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editContent, setEditContent] = useState("");
+  const[activeMembers, setActiveMembers] = useState([]);                      //for active members
+  // Track which comment is being edited: { postId, createdAt }
   const [showCodeEditor, setShowCodeEditor] = useState(false);
   const [editingComment, setEditingComment] = useState(null);
   const [editingCommentDraft, setEditingCommentDraft] = useState("");
@@ -857,6 +860,26 @@ export default function Dashboard() {
   }, [usersCache]);
 
   // ── Trending tags ─────────────────────────────────────────────────────────
+  useEffect(() => {                                                                               //Added new UseEffect
+    const  membersQuery = query(
+      collection(db, "users"),
+      where("isOnline", "==", true)
+    );
+
+    const unsubscribe = onSnapshot(
+      membersQuery,
+      (snapshot) => {
+        setActiveMembers(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+      },
+      (err) => {
+        console.error(err);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // ── Trending tags, computed live from posts ────────────────────────────────
   const trendingTags = useMemo(() => {
     const counts = {};
     const newToday = {};
@@ -1514,31 +1537,38 @@ export default function Dashboard() {
               <div style={S.sidebarWidget}>
                 <h3 style={S.widgetTitle}>Active Members</h3>
                 <div style={S.membersList}>
-                  {[
-                    { initials: "SJ", name: "Sarah Jenkins", role: "Vercel", bg: "linear-gradient(135deg, #ec4899, #f43f5e)" },
-                    { initials: "ER", name: "Elena Rostova", role: "AetherDB", bg: "linear-gradient(135deg, #10b981, #059669)" },
-                  ].map(({ initials, name, role, bg }) => (
-                    <div key={name} style={S.memberItem}>
-                      <div style={S.memberMeta}>
-                        <div style={{
-                          width: 28, height: 28, fontSize: "0.75rem",
-                          background: bg, borderRadius: "var(--radius-full)",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          color: "#000", fontWeight: 700,
-                        }}>
-                          {initials}
+                  {activeMembers.map((member) => {
+                    const name = member.displayName || member.email || "Anonymous";               //Replaced hardcoded members with Realtime active members
+                    const initials = name
+                      .split(" ")
+                      .map((part) => part[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase();
+
+                    return (
+                      <div key={member.id} style={S.memberItem}>
+                        <div style={S.memberMeta}>
+                          <div style={{
+                            width: 28, height: 28, fontSize: "0.75rem",
+                            background: "linear-gradient(135deg, #10b981, #059669", borderRadius: "var(--radius-full)",                   //
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            color: "#000", fontWeight: 700,
+                          }}>
+                            {initials}
+                          </div>
+                          <div>
+                            <div style={S.memberName}>{name}</div>
+                            <div style={S.memberRole}>{member.email}</div>
+                          </div>
                         </div>
-                        <div>
-                          <div style={S.memberName}>{name}</div>
-                          <div style={S.memberRole}>{role}</div>
+                        <div style={S.memberStatus}>
+                          <span style={S.statusDotOnline} />
+                          <span>Online</span>
                         </div>
                       </div>
-                      <div style={S.memberStatus}>
-                        <span style={S.statusDotOnline} />
-                        <span>Online</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </aside>

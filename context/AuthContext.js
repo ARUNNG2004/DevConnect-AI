@@ -10,7 +10,7 @@ import {
   sendPasswordResetEmail,
   updateProfile
 } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";                 //Imported updateDoc
 import { auth, db, googleProvider, githubProvider } from "../lib/firebase";
 
 const AuthContext = createContext({});
@@ -25,17 +25,19 @@ export const AuthProvider = ({ children }) => {
   const saveUserToFirestore = async (userResult) => {
     if (!userResult) return;
     const userRef = doc(db, "users", userResult.uid);
-    const userSnap = await getDoc(userRef);
 
-    if (!userSnap.exists()) {
-      await setDoc(userRef, {
-        uid: userResult.uid,
-        email: userResult.email,
-        displayName: userResult.displayName,
-        photoURL: userResult.photoURL,
-        createdAt: serverTimestamp(),
-      });
-    }
+    await setDoc(userRef, {
+      uid: userResult.uid,
+      email: userResult.email,
+      displayName: userResult.displayName,
+      photoURL: userResult.photoURL,
+      createdAt: serverTimestamp(),
+      isOnline: true,                             //Added to fix Realtime Active Members
+      lastSeen: serverTimestamp(),                // if User Logs in mark them Online
+      },
+      {merge: true}
+   );
+     
   };
 
   const loginWithGoogle = async () => {
@@ -97,6 +99,13 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
+      if (user) {
+        await updateDoc(doc(db, "users", user.uid), {       //Updated for realtime active user
+          isOnline: false,                                  //Before signing out mark user offline
+          lastSeen: serverTimestamp(),
+        });
+      }
+
       await signOut(auth);
     } catch (error) {
       console.error("Logout error:", error);
