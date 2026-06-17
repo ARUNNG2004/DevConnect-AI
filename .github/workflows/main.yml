@@ -25,13 +25,16 @@ jobs:
 
       - name: Check Folder Structure
         run: npm run check:structure
+
       - name: Debug Firebase Variables
         run: |
-          echo "API_KEY=${#NEXT_PUBLIC_FIREBASE_API_KEY}"
+          echo "API_KEY_LENGTH=${#NEXT_PUBLIC_FIREBASE_API_KEY}"
           echo "PROJECT_ID=$NEXT_PUBLIC_FIREBASE_PROJECT_ID"
+          echo "AUTH_DOMAIN=$NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN"
         env:
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
-          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}  
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
 
       - name: Build Project
         run: npm run build
