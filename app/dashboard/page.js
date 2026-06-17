@@ -664,6 +664,42 @@ export default function Dashboard() {
     try {
       setPosting(true);
       setError("");
+      let imageUrl = "";
+      if (selectedImage) {
+        const formData = new FormData();
+
+        formData.append("file", selectedImage);
+        formData.append(
+          "upload_preset",
+          process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
+        );
+      
+        formData.append(
+          "public_id",
+          `posts/${user.uid}-${Date.now()}`
+        );
+
+        console.log(
+  process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET
+);
+
+        const res = await fetch(
+          `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error?.message || "Upload failed");
+        }
+
+        imageUrl = data.secure_url;
+      }
       await addDoc(collection(db, "posts"), {
         uid: user.uid,
         displayName: user.displayName || user.email || "Anonymous User",
@@ -674,6 +710,7 @@ export default function Dashboard() {
         likes: 0,
         likedBy: [],
         comments: [],
+        imageUrl,
       });
       setContent("");
       setSelectedImage(null);
@@ -939,19 +976,47 @@ const removeTag = (tagToRemove) => {
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
                     />
-                    {selectedImage && (
-                      <img
-                        src={selectedImage}
-                        alt="Preview"
-                        style={{
-                          width: "100%",
-                          maxHeight: 250,
-                          objectFit: "cover",
-                          borderRadius: 8,
-                          marginTop: 10,
-                        }}
-                      />
-                    )}
+                      {selectedImage && (
+                        <div
+                      style={{
+                            position: "relative",
+                            marginTop: 10,
+                            display: "inline-block",
+                          }}
+                        >
+                          <img
+                            src={URL.createObjectURL(selectedImage)}
+                            alt="Preview"
+                            style={{
+                              width: "100%",
+                              maxHeight: 250,
+                              objectFit: "cover",
+                              borderRadius: 8,
+                            }}
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedImage(null)}
+                            style={{
+                              position: "absolute",
+                              top: 8,
+                              right: 8,
+                              width: 28,
+                              height: 28,
+                              borderRadius: "50%",
+                              border: "none",
+                              background: "rgba(0,0,0,0.7)",
+                              color: "#fff",
+                              cursor: "pointer",
+                              fontSize: "16px",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
                   </div>
                 </div>
                 
@@ -1032,7 +1097,8 @@ const removeTag = (tagToRemove) => {
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      setSelectedImage(URL.createObjectURL(file));
+                          setSelectedImage(file);
+
                     }
                   }}
                 />
@@ -1216,6 +1282,20 @@ const removeTag = (tagToRemove) => {
                             >
                               {post.content}
                             </ReactMarkdown>
+
+                            {post.imageUrl && (
+                              <img
+                                src={post.imageUrl}
+                                alt="Post"
+                                style={{
+                                  width: "100%",
+                                  maxHeight: 400,
+                                  objectFit: "cover",
+                                  borderRadius: "var(--radius-md)",
+                                  marginTop: 12,
+                                }}
+                              />
+                            )}
                           </div>
                         )}
 
