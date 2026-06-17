@@ -1288,7 +1288,13 @@ const removeTag = (tagToRemove) => {
 
                 <div style={{ ...S.composerActions, gap: 8 }}>
                   {/* Icon tools */}
-                  <button style={S.composerToolBtn} title="Add Image">🖼️</button>
+                  <button
+                    style={S.composerToolBtn}
+                    title="Add Image"
+                    onClick={() => document.getElementById("image-upload")?.click()}
+                  >
+                    🖼️
+                  </button>
                   <button
                     id="open-code-editor-btn"
                     style={S.composerToolBtn}
