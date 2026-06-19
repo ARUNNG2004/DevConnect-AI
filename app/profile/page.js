@@ -791,7 +791,7 @@ export default function Profile() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr", gap: 20, alignItems: "start" }}>
 
               {/* LEFT: Account details */}
-              <div style={{ ...S.card }}>
+              <div style={{ ...S.card, height: "100%", boxSizing: "border-box" }}>
                 <h2 style={{ color: "var(--text-muted)", fontSize: "0.9rem", margin: "0 0 18px 0", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Account</h2>
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   <div>
@@ -830,7 +830,7 @@ export default function Profile() {
               </div>
 
               {/* RIGHT: My Posts */}
-              <div style={{ ...S.card }}>
+              <div style={{ ...S.card, height: "100%", boxSizing: "border-box" }}>
                 <h2 style={{ color: "var(--text-muted)", fontSize: "0.9rem", margin: "0 0 18px 0", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <span>My Posts</span>
                   <span style={{ color: "var(--accent-primary)", fontWeight: 700, fontSize: "1rem", textTransform: "none", letterSpacing: 0 }}>{postCount}</span>
