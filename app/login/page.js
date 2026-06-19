@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useTheme } from "../../context/ThemeContext";
@@ -18,6 +18,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const autoHideTimer = useRef(null);
 
   useEffect(() => {
     const check = () => setIsNarrow(window.innerWidth < 480);
@@ -45,6 +46,22 @@ export default function Login() {
     }
   };
 
+  //Replace the toggle handler with this smarter version that includes auto-hide:
+  const handleTogglePassword = () => {
+  setShowPassword((prev) => {
+    const next = !prev;
+    if (next) {
+      // auto-hide after 3 seconds
+      autoHideTimer.current = setTimeout(() => {
+        setShowPassword(false);
+      }, 3000);
+    } else {
+      clearTimeout(autoHideTimer.current);
+    }
+    return next;
+  });
+};
+
   const handleGoogleLogin = async () => {
     try {
       await loginWithGoogle();
@@ -64,6 +81,11 @@ export default function Login() {
       setError("Failed to log in with GitHub");
     }
   };
+
+  //useEffect to clear the timer if the component unmounts:
+  useEffect(() => {
+  return () => clearTimeout(autoHideTimer.current);
+}, []);
 
   const containerStyle = {
     minHeight: "100vh",
@@ -369,7 +391,7 @@ export default function Login() {
             <div style={relativeStyle}>
               <label htmlFor="password" style={{ display: "none" }}>Password</label>
               <div style={{ ...inputIconStyle, color: "var(--text-muted)" }}>
-                <KeyRound size={18} />
+                <KeyRound size={20} />
               </div>
               <input
                 id="password"
@@ -384,26 +406,36 @@ export default function Login() {
                 onFocus={(e) => { e.target.style.borderColor = "var(--border-focus)"; e.target.style.background = "var(--bg-primary)"; }}
                 onBlur={(e) => { e.target.style.borderColor = "var(--border-color)"; e.target.style.background = "var(--bg-tertiary)"; }}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                style={{
-                  position: "absolute",
-                  right: "0.75rem",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "var(--text-muted)",
-                  display: "flex",
-                  alignItems: "center",
-                  padding: 0,
-                }}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+              {/* Eye toggle button with smooth animation */}
+                <button
+                  type="button"
+                  onClick={handleTogglePassword}
+                  style={{
+                    position: "absolute",
+                    right: "0.75rem",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    color: showPassword ? "var(--accent-primary)" : "var(--text-muted)",
+                    display: "flex",
+                    alignItems: "center",
+                    padding: 0,
+                    transition: "color 0.2s ease, transform 0.3s ease",
+                  }}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      transform: showPassword ? "rotate(180deg)" : "rotate(0deg)",
+                      transition: "transform 0.3s ease",
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </span>
+                </button>
             </div>
 
             <div style={forgotStyle}>
