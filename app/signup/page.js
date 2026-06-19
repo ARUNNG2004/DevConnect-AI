@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useTheme } from "../../context/ThemeContext";
 import Link from "next/link";
-import { Sparkles, Mail, KeyRound, User, Sun, Moon } from "lucide-react";
+import { Sparkles, Mail, KeyRound, User, Sun, Moon, Eye, EyeOff } from "lucide-react";
 
 // Inline styles can't use @media queries, so layout-critical values
 // branch on this instead.
@@ -22,6 +22,20 @@ function useIsMobile(breakpoint = 480) {
   return isMobile;
 }
 
+//password strength function
+function getPasswordStrength(pwd) {
+  if (!pwd) return null;
+  if (pwd.length < 6) return { label: "Weak", color: "#ef4444", width: "33%" };
+  if (
+    pwd.length >= 8 &&
+    /[A-Z]/.test(pwd) &&
+    /[0-9]/.test(pwd) &&
+    /[^A-Za-z0-9]/.test(pwd)
+  )
+    return { label: "Strong", color: "#10b981", width: "100%" };
+  return { label: "Medium", color: "#f59e0b", width: "66%" };
+}
+
 export default function Signup() {
   const { signupWithEmail, loginWithGoogle, loginWithGithub, user } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
@@ -33,6 +47,8 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const autoHideTimer = useRef(null);                               
 
   useEffect(() => {
     if (user) {
@@ -59,6 +75,22 @@ export default function Signup() {
     }
   };
 
+//Replace the toggle handler with this smarter version that includes auto-hide:
+  const handleTogglePassword = () => {
+  setShowPassword((prev) => {
+    const next = !prev;
+    if (next) {
+      // auto-hide after 3 seconds
+      autoHideTimer.current = setTimeout(() => {
+        setShowPassword(false);
+      }, 3000);
+    } else {
+      clearTimeout(autoHideTimer.current);
+    }
+    return next;
+  });
+};
+
   const handleGoogleLogin = async () => {
     try {
       await loginWithGoogle();
@@ -78,6 +110,11 @@ export default function Signup() {
       setError("Failed to sign up with GitHub.");
     }
   };
+
+  // cleanup auto-hide timer on unmount
+  useEffect(() => {
+    return () => clearTimeout(autoHideTimer.current);
+  }, []);
 
   const containerStyle = {
     minHeight: "100vh",
@@ -453,10 +490,10 @@ export default function Signup() {
               <input
                 id="password"
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
                 required
-                style={inputStyle}
+                style={{ ...inputStyle, paddingRight: "2.5rem" }}
                 placeholder="Password (min. 6 characters)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -469,6 +506,74 @@ export default function Signup() {
                   e.target.style.background = "var(--bg-tertiary)";
                 }}
               />
+
+              {/* Eye toggle button with smooth animation */}
+              <button
+                type="button"
+                onClick={handleTogglePassword}
+                style={{
+                  position: "absolute",
+                  right: "0.75rem",
+                  top: password ? "35%" : "50%",
+                  transform: "translateY(-50%)",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  color: showPassword ? "var(--accent-primary)" : "var(--text-muted)",
+                  display: "flex",
+                  alignItems: "center",
+                  padding: 0,
+                  transition: "color 0.2s ease, transform 0.3s ease",
+                }}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                <span
+                  style={{
+                    display: "inline-flex",
+                    transform: showPassword ? "rotate(180deg)" : "rotate(0deg)",
+                    transition: "transform 0.3s ease",
+                  }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </span>
+              </button>
+
+              {/* Password strength bar */}
+                {password && (() => {
+                  const strength = getPasswordStrength(password);
+                  return (
+                    <div style={{ marginTop: "6px" }}>
+                      <div
+                        style={{
+                          height: "4px",
+                          borderRadius: "999px",
+                          background: "var(--border-color)",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            width: strength.width,
+                            background: strength.color,
+                            borderRadius: "999px",
+                            transition: "width 0.4s ease, background 0.4s ease",
+                          }}
+                        />
+                      </div>
+                      <p
+                        style={{
+                          fontSize: "0.75rem",
+                          color: strength.color,
+                          margin: "4px 0 0 0",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {strength.label} password
+                      </p>
+                    </div>
+                  );
+                })()}
             </div>
           </div>
 
