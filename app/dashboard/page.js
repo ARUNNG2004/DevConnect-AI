@@ -2,19 +2,19 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Navbar from "../../components/Navbar";
-import ProtectedRoute from "../../components/ProtectedRoute";
-import CodeEditorModal from "../../components/CodeEditorModal";
-import SavedPosts from "../../components/SavedPosts";
-import FeatureTour from "../../components/FeatureTour";
-import { useAuth } from "../../context/AuthContext";
-import { db } from "../../lib/firebase";
-import { createNotification } from "../../lib/notifications";
-import ProfilePopup from "../../components/dashboard/ProfilePopup";
-import LeftSidebar from "../../components/dashboard/LeftSidebar";
-import RightSidebar from "../../components/dashboard/RightSidebar";
-import FeedColumn from "../../components/dashboard/FeedColumn";
-import MobileView from "../../components/dashboard/MobileView";
+import Navbar from "../components/Navbar";
+import ProtectedRoute from "../components/ProtectedRoute";
+import CodeEditorModal from "../components/CodeEditorModal";
+import SavedPosts from "../components/SavedPosts";
+import FeatureTour from "../components/FeatureTour";
+import { useAuth } from "../context/AuthContext";
+import { db } from "../lib/firebase";
+import { createNotification } from "../lib/notifications";
+import ProfilePopup from "../components/dashboard/ProfilePopup";
+import LeftSidebar from "../components/dashboard/LeftSidebar";
+import RightSidebar from "../components/dashboard/RightSidebar";
+import FeedColumn from "../components/dashboard/FeedColumn";
+import MobileView from "../components/dashboard/MobileView";
 import {
   collection,
   addDoc,
@@ -32,9 +32,6 @@ import {
 } from "firebase/firestore";
 
 const FEATURE_TOUR_KEY = "devconnect_feature_tour_seen";
-
-const DEFAULT_EMOJIS = ["👍", "✅", "💡", "❤️"];
-const EXTRA_EMOJIS   = ["🔥", "😂", "😮", "🎉", "🙌", "💯", "🚀", "😢", "😡", "👀", "🤔", "⭐"];
 
 const S = {
   appContainer: {
@@ -91,24 +88,17 @@ export default function Dashboard() {
   const [editingComment, setEditingComment] = useState(null);
   const [editingCommentDraft, setEditingCommentDraft] = useState("");
 
-  // ── Emoji reaction picker state ──────────────────────────────────────────
-  const [openPickerFor, setOpenPickerFor] = useState(null);
-
   // ── Mobile state ─────────────────────────────────────────────────────────
   const [isMobile, setIsMobile] = useState(false);
   const [mobileTab, setMobileTab] = useState("feed");
 
   const highlightTimeoutRef = useRef(null);
-  const isMobileRef = useRef(false);
+  const isMobileRef = useRef(false); 
   const scrolledRef = useRef(false);
 
   // ── Responsive detection ─────────────────────────────────────────────────
   useEffect(() => {
-    const check = () => {
-      const mobile = window.innerWidth < 1024;
-      setIsMobile(mobile);
-      isMobileRef.current = mobile;
-    };
+    const check = () => setIsMobile(window.innerWidth < 1024);
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
@@ -124,14 +114,6 @@ export default function Dashboard() {
     try { localStorage.setItem(FEATURE_TOUR_KEY, "true"); } catch { }
   };
 
-  // ── Close emoji picker on outside click ──────────────────────────────────
-  useEffect(() => {
-    if (!openPickerFor) return;
-    const close = () => setOpenPickerFor(null);
-    window.addEventListener("click", close);
-    return () => window.removeEventListener("click", close);
-  }, [openPickerFor]);
-
   // ── Firebase: posts ───────────────────────────────────────────────────────
   useEffect(() => {
     const postsQuery = query(collection(db, "posts"), orderBy("timestamp", "desc"));
@@ -141,7 +123,7 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, []);
 
-  // ── Firebase: users cache ────────────────────────────────────────────────
+  // ── Firebase: users cache (for live avatars/names) ────────────────────────
   useEffect(() => {
     const uids = new Set();
     posts.forEach((p) => {
@@ -189,7 +171,7 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, []);
 
-  // ── Close profile popup on scroll ─────────────────────────────────────────
+  // ── Close popup on scroll ─────────────────────────────────────────────────
   useEffect(() => {
     if (!profilePopup) return;
     const handleScroll = () => setProfilePopup(null);
@@ -227,6 +209,17 @@ export default function Dashboard() {
   }, [posts, scrollToHashPost]);
 
   useEffect(() => {
+  const check = () => {
+    const mobile = window.innerWidth < 1024;
+    setIsMobile(mobile);
+    isMobileRef.current = mobile; // ← add this line
+  };
+  check();
+  window.addEventListener("resize", check);
+  return () => window.removeEventListener("resize", check);
+}, []);
+
+  useEffect(() => {
     const handler = () => { scrolledRef.current = false; scrollToHashPost(); };
     window.addEventListener("hashchange", handler);
     window.addEventListener("dashboard-scroll-request", handler);
@@ -250,32 +243,36 @@ export default function Dashboard() {
     [usersCache]
   );
 
-  // ── Profile popup (desktop) / direct navigation (mobile) ─────────────────
+  // ── Profile popup ─────────────────────────────────────────────────────────
   const handleViewProfile = useCallback((uid) => { router.push(`/user/${uid}`); }, [router]);
 
-  const openProfile = useCallback((e, uid, storedName, storedPhoto) => {
-    e.stopPropagation();
-    if (isMobileRef.current) {
-      router.push(`/user/${uid}`);
-      return;
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
-    const popupWidth = 224, popupHeight = 300, margin = 12;
-    let x = rect.right + margin, y = rect.top + rect.height / 2;
-    if (x + popupWidth > window.innerWidth - 16) x = rect.left - popupWidth - margin;
-    const halfPopup = popupHeight / 2;
-    if (y - halfPopup < 8) y = halfPopup + 8;
-    if (y + halfPopup > window.innerHeight - 8) y = window.innerHeight - halfPopup - 8;
-    setProfilePopup({
-      uid,
-      displayName: usersCache[uid]?.displayName || storedName || "Anonymous User",
-      photoURL: usersCache[uid]?.photoURL ?? storedPhoto ?? "",
-      followersCount: usersCache[uid]?.followersCount ?? 0,
-      followingCount: usersCache[uid]?.followingCount ?? 0,
-      x, y,
-      flipped: rect.right + margin + popupWidth > window.innerWidth - 16,
-    });
-  }, [usersCache, router]);
+ // ── Profile popup (desktop) / direct navigation (mobile) ─────────────────
+const openProfile = useCallback((e, uid, storedName, storedPhoto) => {
+  e.stopPropagation();
+
+  // Use ref so we always get the live value, not a stale closure
+  if (isMobileRef.current) {
+    router.push(`/user/${uid}`);
+    return;
+  }
+
+  const rect = e.currentTarget.getBoundingClientRect();
+  const popupWidth = 224, popupHeight = 300, margin = 12;
+  let x = rect.right + margin, y = rect.top + rect.height / 2;
+  if (x + popupWidth > window.innerWidth - 16) x = rect.left - popupWidth - margin;
+  const halfPopup = popupHeight / 2;
+  if (y - halfPopup < 8) y = halfPopup + 8;
+  if (y + halfPopup > window.innerHeight - 8) y = window.innerHeight - halfPopup - 8;
+  setProfilePopup({
+    uid,
+    displayName: usersCache[uid]?.displayName || storedName || "Anonymous User",
+    photoURL: usersCache[uid]?.photoURL ?? storedPhoto ?? "",
+    followersCount: usersCache[uid]?.followersCount ?? 0,
+    followingCount: usersCache[uid]?.followingCount ?? 0,
+    x, y,
+    flipped: rect.right + margin + popupWidth > window.innerWidth - 16,
+  });
+}, [usersCache, router]); // ← removed isMobile, ref is always current
 
   // ── Follow / Unfollow ─────────────────────────────────────────────────────
   const handleFollowToggle = useCallback(async (targetUid, isCurrentlyFollowing) => {
@@ -448,42 +445,12 @@ export default function Dashboard() {
     catch (err) { console.error(err); setError("Failed to delete comment."); }
   };
 
-  // ── Emoji reaction toggle ─────────────────────────────────────────────────
-  const handleToggleCommentReaction = async (post, comment, emoji) => {
-    if (!user) return;
-    const postRef = doc(db, "posts", post.id);
-    const updatedComments = (post.comments || []).map((c) => {
-      if (c.uid === comment.uid && c.createdAt === comment.createdAt) {
-        const allEmojis = [...DEFAULT_EMOJIS, ...EXTRA_EMOJIS];
-        const currentEmoji = allEmojis.find((e) => (c.reactions?.[e] || []).includes(user.uid));
-        if (currentEmoji === emoji) {
-          return {
-            ...c,
-            reactions: {
-              ...c.reactions,
-              [emoji]: (c.reactions[emoji] || []).filter((id) => id !== user.uid),
-            },
-          };
-        }
-        const updatedReactions = { ...c.reactions };
-        if (currentEmoji) {
-          updatedReactions[currentEmoji] = (updatedReactions[currentEmoji] || []).filter((id) => id !== user.uid);
-        }
-        updatedReactions[emoji] = [...(updatedReactions[emoji] || []), user.uid];
-        return { ...c, reactions: updatedReactions };
-      }
-      return c;
-    });
-    await updateDoc(postRef, { comments: updatedComments });
-  };
-
-  // ── Shared props bundle for FeedColumn / PostCard ─────────────────────────
+  // ── Shared props bundle for feed / post cards ────────────────────────────
   const sharedPostProps = {
     user, isMobile, openCommentsFor, commentDraft, setCommentDraft,
     editingId, editContent, setEditContent, editingComment,
     editingCommentDraft, setEditingCommentDraft, savedPostIds,
     getLiveName, getLivePhoto,
-    openPickerFor, setOpenPickerFor,
     onOpenProfile: openProfile,
     onToggleLike: handleToggleLike,
     onToggleSave: handleToggleSave,
@@ -497,7 +464,6 @@ export default function Dashboard() {
     onCancelEditComment: cancelEditComment,
     onSaveCommentEdit: handleSaveCommentEdit,
     onDeleteComment: handleDeleteComment,
-    onToggleCommentReaction: handleToggleCommentReaction,
   };
 
   const composerProps = {
@@ -522,7 +488,6 @@ export default function Dashboard() {
         <div style={S.appContainer}>
           <Navbar variant="dashboard" />
 
-          {/* ── Desktop layout ── */}
           {!isMobile && (
             <div style={S.mainLayout}>
               <LeftSidebar
@@ -539,7 +504,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ── Mobile layout — fully delegated to MobileView ── */}
           {isMobile && (
             <MobileView
               mobileTab={mobileTab}
@@ -556,19 +520,10 @@ export default function Dashboard() {
           )}
         </div>
 
-        <CodeEditorModal
-          isOpen={showCodeEditor}
-          onClose={() => setShowCodeEditor(false)}
-          onInsert={handleInsertCode}
-        />
-
+        <CodeEditorModal isOpen={showCodeEditor} onClose={() => setShowCodeEditor(false)} onInsert={handleInsertCode} />
         {showSavedPosts && !isMobile && (
-          <SavedPosts
-            onClose={() => setShowSavedPosts(false)}
-            onUnsave={(postId) => handleToggleSave(postId)}
-          />
+          <SavedPosts onClose={() => setShowSavedPosts(false)} onUnsave={(postId) => handleToggleSave(postId)} />
         )}
-
         {showFeatureTour && <FeatureTour onClose={closeFeatureTour} />}
 
         <ProfilePopup
