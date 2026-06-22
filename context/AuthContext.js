@@ -94,19 +94,23 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    try {
-      if (user) {
-        await updateDoc(doc(db, "users", user.uid), {
+  try {
+    if (user) {
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
           isOnline: false,
           lastSeen: serverTimestamp(),
-        });
-      }
-      await signOut(auth);
-    } catch (error) {
-      console.error("Logout error:", error);
-      throw error;
+        },
+        { merge: true }
+      );
     }
-  };
+    await signOut(auth);
+  } catch (error) {
+    console.error("Logout error:", error);
+    throw error;
+  }
+};
 
   const resetPassword = async (email) => {
     try {
