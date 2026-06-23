@@ -15,6 +15,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
+import { EVENTS } from "../../lib/posthog/events";
+import { captureEvent } from "../../lib/posthog/helpers";
 
 export default function Login() {
   const { loginWithGoogle, loginWithGithub, loginWithEmail, user } = useAuth();

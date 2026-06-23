@@ -31,6 +31,8 @@ import SavedPosts from "../../components/SavedPosts";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../lib/firebase";
 import { createNotification } from "../../lib/notifications";
+import { EVENTS } from "../../lib/posthog/events";
+import { captureEvent } from "../../lib/posthog/helpers";
 
 const FEATURE_TOUR_KEY = "devconnect_feature_tour_seen";
 
@@ -508,6 +510,7 @@ export default function Dashboard() {
         postData.pollVotes = {}; // { "0": [], "1": [], ... }
       }
       await addDoc(collection(db, "posts"), postData);
+      captureEvent(EVENTS.POST_CREATED, { postType, tagCount: selectedTags.length });
       await updateStreak(user.uid);
       setContent("");
       setSelectedTags([]);
