@@ -16,6 +16,8 @@ import {
   orderBy,
   getDoc,
   deleteDoc,
+  arrayUnion,
+  arrayRemove,
 } from "firebase/firestore";
 import { updateProfile, deleteUser } from "firebase/auth";
 
@@ -57,6 +59,7 @@ const SKILL_PRESETS = [
   { key: "blockchain", label: "Blockchain Dev",      color: "#6366f1" },
 ];
 const MAX_SKILLS = 8;
+const MAX_PINNED = 2;
 
 function getSkillMeta(key) {
   return SKILL_PRESETS.find((s) => s.key === key) || { key, label: key, color: "#64748b" };
@@ -738,6 +741,106 @@ function AvatarWidget({ size, currentPhotoURL, displayName, photoUploading, phot
   );
 }
 
+// ── Post card ─────────────────────────────────────────────────────────────────
+function PostCard({ post, S, pinned, onTogglePin, pinDisabled }) {
+  const typeLabel = post.postType === "question" ? "Question" : post.postType === "collaboration" ? "Collaborate" : "Discussion";
+  const ts = post.timestamp?.toDate
+    ? post.timestamp.toDate().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    : "Recently";
+  const snippet = post.content?.replace(/[#*`>_~]/g, "").slice(0, 140) + (post.content?.length > 140 ? "…" : "");
+
+  return (
+    <div
+  style={{
+    ...S.postCard,
+    ...(pinned ? { border: "1px solid var(--accent-primary)", boxShadow: "0 0 0 1px var(--accent-primary-alpha)" } : {}),
+  }}
+  onMouseEnter={(e) => { if (!pinned) e.currentTarget.style.border = "1px solid var(--accent-primary)"; }}
+  onMouseLeave={(e) => { if (!pinned) e.currentTarget.style.border = "1px solid var(--border-color)"; }}
+>
+      <div style={S.postMeta}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={S.postTypeTag}>{typeLabel}</span>
+          {pinned && (
+            <span style={{
+              fontSize: "0.68rem", fontWeight: 700, color: "var(--accent-primary)",
+              display: "flex", alignItems: "center", gap: 3,
+            }}>
+              📌 Pinned
+            </span>
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={S.postTimestamp}>{ts}{post.edited ? " (edited)" : ""}</span>
+          {onTogglePin && (
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTogglePin(post.id); }}
+              disabled={!pinned && pinDisabled}
+              title={pinned ? "Unpin post" : "Pin post"}
+              style={{
+                background: "none", border: "none",
+                cursor: (!pinned && pinDisabled) ? "not-allowed" : "pointer",
+                fontSize: "0.85rem", padding: "2px 4px", lineHeight: 1,
+                opacity: (!pinned && pinDisabled) ? 0.35 : 1,
+                color: pinned ? "var(--accent-primary)" : "var(--text-muted)",
+              }}
+            >
+              📌
+            </button>
+          )}
+        </div>
+      </div>
+      <Link href="/dashboard" style={{ textDecoration: "none" }}>
+        <p style={S.postContent}>{snippet || "(no content)"}</p>
+      </Link>
+      {post.tags?.length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {post.tags.map((t) => (
+            <span key={t} style={{ fontSize: "0.7rem", color: "var(--accent-primary)", background: "var(--accent-primary-alpha)", padding: "2px 7px", borderRadius: "var(--radius-full)" }}>{t}</span>
+          ))}
+        </div>
+      )}
+      <div style={S.postStats}>
+        <span>♡ {post.likes || 0}</span>
+        <span>💬 {post.comments?.length || 0}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Posts section (mobile) ────────────────────────────────────────────────────
+function PostsSection({ myPosts, postCount, S, cm, pinnedPosts, onTogglePin, pinDisabled, pinError }) {
+  return (
+    <div style={{ ...S.card, ...cm, marginTop: 14 }}>
+      <h2 style={{ color: "var(--text-primary)", fontSize: "1rem", margin: "0 0 16px 0", fontWeight: 600 }}>
+        My Posts <span style={{ color: "var(--text-muted)", fontWeight: 400, fontSize: "0.85rem" }}>({postCount})</span>
+      </h2>
+      {pinError && <p style={{ color: "#ef4444", fontSize: "0.78rem", margin: "0 0 10px 0" }}>{pinError}</p>}
+      {myPosts.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "24px 0" }}>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.88rem", margin: "0 0 12px 0" }}>You haven't posted anything yet.</p>
+          <Link href="/dashboard" style={{ padding: "8px 18px", backgroundColor: "var(--accent-primary)", border: "none", borderRadius: "var(--radius-md)", color: "#000", fontWeight: 600, fontSize: "0.85rem", textDecoration: "none", display: "inline-block" }}>
+            Go to Dashboard
+          </Link>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {myPosts.map((post) => (
+            <PostCard
+              key={post.id}
+              post={post}
+              S={S}
+              pinned={pinnedPosts.includes(post.id)}
+              onTogglePin={onTogglePin}
+              pinDisabled={pinDisabled}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function Profile() {
   const { user, logout, loading } = useAuth();
@@ -773,6 +876,10 @@ export default function Profile() {
   const [myPosts, setMyPosts] = useState([]);
   const [postCount, setPostCount] = useState(0);
 
+  // ── Pinned posts state ──
+  const [pinnedPosts, setPinnedPosts] = useState([]);
+  const [pinError, setPinError] = useState("");
+
   // ── Delete account state ──
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -796,6 +903,7 @@ export default function Profile() {
       setFollowers(data.followers || []);
       setFollowing(data.following || []);
       setStreak(data.streak || 0);
+      setPinnedPosts(Array.isArray(data.pinnedPosts) ? data.pinnedPosts : []);
     });
     return () => unsub();
   }, [user]);
@@ -820,6 +928,15 @@ export default function Profile() {
   const joinedDate = user.metadata?.creationTime
     ? new Date(user.metadata.creationTime).toLocaleDateString("en-US", { month: "long", year: "numeric" })
     : "Recently";
+
+  // Pinned posts float to the top, preserving relative order otherwise
+  const sortedPosts = [...myPosts].sort((a, b) => {
+    const aPinned = pinnedPosts.includes(a.id);
+    const bPinned = pinnedPosts.includes(b.id);
+    if (aPinned && !bPinned) return -1;
+    if (!aPinned && bPinned) return 1;
+    return 0;
+  });
 
   const startEditing = () => {
     setNameInput(user.displayName || "");
@@ -888,6 +1005,25 @@ export default function Profile() {
     catch { console.error("Logout failed"); }
   };
 
+  // ── Pin/unpin handler ─────────────────────────────────────────────────────
+  const handleTogglePin = async (postId) => {
+    setPinError("");
+    const isPinned = pinnedPosts.includes(postId);
+    if (!isPinned && pinnedPosts.length >= MAX_PINNED) {
+      setPinError(`You can only pin up to ${MAX_PINNED} posts. Unpin one first.`);
+      return;
+    }
+    try {
+      await setDoc(
+        doc(db, "users", user.uid),
+        { pinnedPosts: isPinned ? arrayRemove(postId) : arrayUnion(postId) },
+        { merge: true }
+      );
+    } catch {
+      setPinError("Failed to update pin. Try again.");
+    }
+  };
+
   // ── Delete account handler ────────────────────────────────────────────────
   const handleDeleteAccount = async () => {
     setDeleting(true);
@@ -911,6 +1047,7 @@ export default function Profile() {
   };
 
   const cm = isMobile ? S.cardMobile : {};
+  const pinDisabled = pinnedPosts.length >= MAX_PINNED;
 
   // ── Shared account actions block (Sign Out + Delete) ──────────────────────
   const AccountActions = () => (
@@ -1053,7 +1190,16 @@ export default function Profile() {
               <AccountActions />
             </div>
 
-            <PostsSection myPosts={myPosts} postCount={postCount} S={S} cm={cm} />
+            <PostsSection
+              myPosts={sortedPosts}
+              postCount={postCount}
+              S={S}
+              cm={cm}
+              pinnedPosts={pinnedPosts}
+              onTogglePin={handleTogglePin}
+              pinDisabled={pinDisabled}
+              pinError={pinError}
+            />
             <div style={{ height: 40 }} />
           </>
         ) : (
@@ -1203,6 +1349,7 @@ export default function Profile() {
                   <span>My Posts</span>
                   <span style={{ color: "var(--accent-primary)", fontWeight: 700, fontSize: "1rem", textTransform: "none", letterSpacing: 0 }}>{postCount}</span>
                 </h2>
+                {pinError && <p style={{ color: "#ef4444", fontSize: "0.78rem", margin: "0 0 12px 0" }}>{pinError}</p>}
                 {myPosts.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "32px 0" }}>
                     <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", margin: "0 0 14px 0" }}>You haven't posted anything yet.</p>
@@ -1210,7 +1357,16 @@ export default function Profile() {
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 520, overflowY: "auto" }}>
-                    {myPosts.map((post) => <PostCard key={post.id} post={post} S={S} />)}
+                    {sortedPosts.map((post) => (
+                      <PostCard
+                        key={post.id}
+                        post={post}
+                        S={S}
+                        pinned={pinnedPosts.includes(post.id)}
+                        onTogglePin={handleTogglePin}
+                        pinDisabled={pinDisabled}
+                      />
+                    ))}
                   </div>
                 )}
               </div>
@@ -1234,61 +1390,5 @@ export default function Profile() {
         />
       )}
     </main>
-  );
-}
-
-// ── Post card ─────────────────────────────────────────────────────────────────
-function PostCard({ post, S }) {
-  const typeLabel = post.postType === "question" ? "Question" : post.postType === "collaboration" ? "Collaborate" : "Discussion";
-  const ts = post.timestamp?.toDate
-    ? post.timestamp.toDate().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-    : "Recently";
-  const snippet = post.content?.replace(/[#*`>_~]/g, "").slice(0, 140) + (post.content?.length > 140 ? "…" : "");
-  return (
-    <Link href="/dashboard" style={{ textDecoration: "none" }}>
-      <div style={S.postCard}
-        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent-primary)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-color)"; }}>
-        <div style={S.postMeta}>
-          <span style={S.postTypeTag}>{typeLabel}</span>
-          <span style={S.postTimestamp}>{ts}{post.edited ? " (edited)" : ""}</span>
-        </div>
-        <p style={S.postContent}>{snippet || "(no content)"}</p>
-        {post.tags?.length > 0 && (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {post.tags.map((t) => (
-              <span key={t} style={{ fontSize: "0.7rem", color: "var(--accent-primary)", background: "var(--accent-primary-alpha)", padding: "2px 7px", borderRadius: "var(--radius-full)" }}>{t}</span>
-            ))}
-          </div>
-        )}
-        <div style={S.postStats}>
-          <span>♡ {post.likes || 0}</span>
-          <span>💬 {post.comments?.length || 0}</span>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-// ── Posts section (mobile) ────────────────────────────────────────────────────
-function PostsSection({ myPosts, postCount, S, cm }) {
-  return (
-    <div style={{ ...S.card, ...cm, marginTop: 14 }}>
-      <h2 style={{ color: "var(--text-primary)", fontSize: "1rem", margin: "0 0 16px 0", fontWeight: 600 }}>
-        My Posts <span style={{ color: "var(--text-muted)", fontWeight: 400, fontSize: "0.85rem" }}>({postCount})</span>
-      </h2>
-      {myPosts.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "24px 0" }}>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.88rem", margin: "0 0 12px 0" }}>You haven't posted anything yet.</p>
-          <Link href="/dashboard" style={{ padding: "8px 18px", backgroundColor: "var(--accent-primary)", border: "none", borderRadius: "var(--radius-md)", color: "#000", fontWeight: 600, fontSize: "0.85rem", textDecoration: "none", display: "inline-block" }}>
-            Go to Dashboard
-          </Link>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {myPosts.map((post) => <PostCard key={post.id} post={post} S={S} />)}
-        </div>
-      )}
-    </div>
   );
 }
