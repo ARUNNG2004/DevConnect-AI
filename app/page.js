@@ -924,7 +924,7 @@ export default function Home() {
           </h2>
           <p style={{ ...S.sectionTitleP, ...(isMobile ? S.sectionTitlePMobile : {}) }}>
             DevConnect features custom LLM orchestration running locally in your workspace
-            to automate tedious code tasks.
+            to automate tedious code tasks. 1
           </p>
         </div>
 
