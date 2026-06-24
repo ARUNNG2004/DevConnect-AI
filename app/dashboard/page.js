@@ -1,36 +1,38 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import {
+  addDoc,
+  arrayRemove,
+  arrayUnion,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  where,
+} from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import CodeEditorModal from "../../components/CodeEditorModal";
+import FeedColumn from "../../components/dashboard/FeedColumn";
+import LeftSidebar from "../../components/dashboard/LeftSidebar";
+import MobileView from "../../components/dashboard/MobileView";
+import ProfilePopup from "../../components/dashboard/ProfilePopup";
+import RightSidebar from "../../components/dashboard/RightSidebar";
+import FeatureTour from "../../components/FeatureTour";
 import Navbar from "../../components/Navbar";
 import ProtectedRoute from "../../components/ProtectedRoute";
-import CodeEditorModal from "../../components/CodeEditorModal";
 import SavedPosts from "../../components/SavedPosts";
-import FeatureTour from "../../components/FeatureTour";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../lib/firebase";
 import { createNotification } from "../../lib/notifications";
-import ProfilePopup from "../../components/dashboard/ProfilePopup";
-import LeftSidebar from "../../components/dashboard/LeftSidebar";
-import RightSidebar from "../../components/dashboard/RightSidebar";
-import FeedColumn from "../../components/dashboard/FeedColumn";
-import MobileView from "../../components/dashboard/MobileView";
-import {
-  collection,
-  addDoc,
-  deleteDoc,
-  updateDoc,
-  setDoc,
-  doc,
-  getDoc,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  serverTimestamp,
-  arrayUnion,
-  arrayRemove,
-} from "firebase/firestore";
+import { EVENTS } from "../../lib/posthog/events";
+import { captureEvent } from "../../lib/posthog/helpers";
 
 const FEATURE_TOUR_KEY = "devconnect_feature_tour_seen";
 
@@ -71,7 +73,11 @@ async function updateStreak(uid) {
 
   const newStreak = lastActiveStr === yesterdayStr ? currentStreak + 1 : 1;
 
-  await setDoc(userRef, { streak: newStreak, lastActiveDate: todayStr }, { merge: true });
+  await setDoc(
+    userRef,
+    { streak: newStreak, lastActiveDate: todayStr },
+    { merge: true },
+  );
 }
 
 export default function Dashboard() {
@@ -86,7 +92,7 @@ export default function Dashboard() {
   const [customTag, setCustomTag] = useState("");
   const [showAiDraft, setShowAiDraft] = useState(false);
   const [showCodeEditor, setShowCodeEditor] = useState(false);
-  
+
   const [error, setError] = useState("");
   const [pollOptions, setPollOptions] = useState(["", ""]);
 
@@ -139,20 +145,32 @@ export default function Dashboard() {
     try {
       const seen = localStorage.getItem(FEATURE_TOUR_KEY);
       if (!seen) setShowFeatureTour(true);
-    } catch { }
+    } catch {}
   }, []);
 
   const closeFeatureTour = () => {
     setShowFeatureTour(false);
-    try { localStorage.setItem(FEATURE_TOUR_KEY, "true"); } catch { }
+    try {
+      localStorage.setItem(FEATURE_TOUR_KEY, "true");
+    } catch {}
   };
 
   // ── Firebase: posts ───────────────────────────────────────────────────────
   useEffect(() => {
-    const postsQuery = query(collection(db, "posts"), orderBy("timestamp", "desc"));
-    const unsubscribe = onSnapshot(postsQuery, (snapshot) => {
-      setPosts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
-    }, (err) => { console.error(err); setError("Failed to load posts."); });
+    const postsQuery = query(
+      collection(db, "posts"),
+      orderBy("timestamp", "desc"),
+    );
+    const unsubscribe = onSnapshot(
+      postsQuery,
+      (snapshot) => {
+        setPosts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+      },
+      (err) => {
+        console.error(err);
+        setError("Failed to load posts.");
+      },
+    );
     return () => unsubscribe();
   }, []);
 
@@ -161,7 +179,9 @@ export default function Dashboard() {
     const uids = new Set();
     posts.forEach((p) => {
       if (p.uid) uids.add(p.uid);
-      (p.comments || []).forEach((c) => { if (c.uid) uids.add(c.uid); });
+      (p.comments || []).forEach((c) => {
+        if (c.uid) uids.add(c.uid);
+      });
     });
     const unsubs = [];
     uids.forEach((uid) => {
@@ -186,22 +206,38 @@ export default function Dashboard() {
 
   // ── Firebase: current user's saved posts + following + streak ─────────────
   useEffect(() => {
-    if (!user) { setSavedPostIds([]); setFollowing([]); setStreak(0); return; }
-    const unsubscribe = onSnapshot(doc(db, "users", user.uid), (snap) => {
-      const data = snap.data() || {};
-      setSavedPostIds(data.savedPosts || []);
-      setFollowing(data.following || []);
-      setStreak(data.streak || 0);
-    }, (err) => console.error(err));
+    if (!user) {
+      setSavedPostIds([]);
+      setFollowing([]);
+      setStreak(0);
+      return;
+    }
+    const unsubscribe = onSnapshot(
+      doc(db, "users", user.uid),
+      (snap) => {
+        const data = snap.data() || {};
+        setSavedPostIds(data.savedPosts || []);
+        setFollowing(data.following || []);
+        setStreak(data.streak || 0);
+      },
+      (err) => console.error(err),
+    );
     return () => unsubscribe();
   }, [user]);
 
   // ── Firebase: active members ──────────────────────────────────────────────
   useEffect(() => {
-    const membersQuery = query(collection(db, "users"), where("isOnline", "==", true));
-    const unsubscribe = onSnapshot(membersQuery, (snapshot) => {
-      setActiveMembers(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
-    }, (err) => console.error(err));
+    const membersQuery = query(
+      collection(db, "users"),
+      where("isOnline", "==", true),
+    );
+    const unsubscribe = onSnapshot(
+      membersQuery,
+      (snapshot) => {
+        setActiveMembers(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+      },
+      (err) => console.error(err),
+    );
     return () => unsubscribe();
   }, []);
 
@@ -212,8 +248,6 @@ export default function Dashboard() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [profilePopup]);
-
-
 
   // ── Deep-link scroll to post via hash ────────────────────────────────────
   const scrollToHashPost = useCallback(() => {
@@ -228,8 +262,12 @@ export default function Dashboard() {
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
         setHighlightedPostId(targetId);
-        if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
-        highlightTimeoutRef.current = setTimeout(() => setHighlightedPostId(null), 2600);
+        if (highlightTimeoutRef.current)
+          clearTimeout(highlightTimeoutRef.current);
+        highlightTimeoutRef.current = setTimeout(
+          () => setHighlightedPostId(null),
+          2600,
+        );
       }
     }, 150);
   }, [posts]);
@@ -245,7 +283,10 @@ export default function Dashboard() {
   }, [posts, scrollToHashPost]);
 
   useEffect(() => {
-    const handler = () => { scrolledRef.current = false; scrollToHashPost(); };
+    const handler = () => {
+      scrolledRef.current = false;
+      scrollToHashPost();
+    };
     window.addEventListener("hashchange", handler);
     window.addEventListener("dashboard-scroll-request", handler);
     return () => {
@@ -255,109 +296,149 @@ export default function Dashboard() {
   }, [scrollToHashPost]);
 
   useEffect(() => {
-    return () => { if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current); };
+    return () => {
+      if (highlightTimeoutRef.current)
+        clearTimeout(highlightTimeoutRef.current);
+    };
   }, []);
 
   // ── Live name / photo helpers ─────────────────────────────────────────────
   const getLiveName = useCallback(
-    (uid, fallback) => usersCache[uid]?.displayName || fallback || "Anonymous User",
-    [usersCache]
+    (uid, fallback) =>
+      usersCache[uid]?.displayName || fallback || "Anonymous User",
+    [usersCache],
   );
   const getLivePhoto = useCallback(
     (uid, fallback) => usersCache[uid]?.photoURL ?? fallback ?? "",
-    [usersCache]
+    [usersCache],
   );
 
   // ── Profile popup ─────────────────────────────────────────────────────────
-  const handleViewProfile = useCallback((uid) => { router.push(`/user/${uid}`); }, [router]);
-
-  const openProfile = useCallback((e, uid, storedName, storedPhoto) => {
-    e.stopPropagation();
-    if (isMobileRef.current) {
+  const handleViewProfile = useCallback(
+    (uid) => {
       router.push(`/user/${uid}`);
-      return;
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
-    const popupWidth = 224, popupHeight = 300, margin = 12;
-    let x = rect.right + margin, y = rect.top + rect.height / 2;
-    if (x + popupWidth > window.innerWidth - 16) x = rect.left - popupWidth - margin;
-    const halfPopup = popupHeight / 2;
-    if (y - halfPopup < 8) y = halfPopup + 8;
-    if (y + halfPopup > window.innerHeight - 8) y = window.innerHeight - halfPopup - 8;
-    setProfilePopup({
-      uid,
-      displayName: usersCache[uid]?.displayName || storedName || "Anonymous User",
-      photoURL: usersCache[uid]?.photoURL ?? storedPhoto ?? "",
-      followersCount: usersCache[uid]?.followersCount ?? 0,
-      followingCount: usersCache[uid]?.followingCount ?? 0,
-      x, y,
-      flipped: rect.right + margin + popupWidth > window.innerWidth - 16,
-    });
-  }, [usersCache, router]);
+    },
+    [router],
+  );
+
+  const openProfile = useCallback(
+    (e, uid, storedName, storedPhoto) => {
+      e.stopPropagation();
+      if (isMobileRef.current) {
+        router.push(`/user/${uid}`);
+        return;
+      }
+      const rect = e.currentTarget.getBoundingClientRect();
+      const popupWidth = 224,
+        popupHeight = 300,
+        margin = 12;
+      let x = rect.right + margin,
+        y = rect.top + rect.height / 2;
+      if (x + popupWidth > window.innerWidth - 16)
+        x = rect.left - popupWidth - margin;
+      const halfPopup = popupHeight / 2;
+      if (y - halfPopup < 8) y = halfPopup + 8;
+      if (y + halfPopup > window.innerHeight - 8)
+        y = window.innerHeight - halfPopup - 8;
+      setProfilePopup({
+        uid,
+        displayName:
+          usersCache[uid]?.displayName || storedName || "Anonymous User",
+        photoURL: usersCache[uid]?.photoURL ?? storedPhoto ?? "",
+        followersCount: usersCache[uid]?.followersCount ?? 0,
+        followingCount: usersCache[uid]?.followingCount ?? 0,
+        x,
+        y,
+        flipped: rect.right + margin + popupWidth > window.innerWidth - 16,
+      });
+    },
+    [usersCache, router],
+  );
 
   // ── Follow / Unfollow ─────────────────────────────────────────────────────
   // ── Comment reactions ────────────────────────────────────────────────────
-// ── Comment reactions (one emoji per user per comment) ──────────────────
-const handleToggleCommentReaction = async (post, comment, emoji) => {
-  if (!user) return;
-  const reactions = comment.reactions || {};
-  
+  // ── Comment reactions (one emoji per user per comment) ──────────────────
+  const handleToggleCommentReaction = async (post, comment, emoji) => {
+    if (!user) return;
+    const reactions = comment.reactions || {};
 
-  // Find which emoji (if any) this user currently has on this comment
-  const currentEmoji = Object.keys(reactions).find((e) =>
-    (reactions[e] || []).includes(user.uid)
-  );
+    // Find which emoji (if any) this user currently has on this comment
+    const currentEmoji = Object.keys(reactions).find((e) =>
+      (reactions[e] || []).includes(user.uid),
+    );
 
-  // Strip the user out of every emoji's reactor list first
-  const updatedReactions = {};
-  Object.keys(reactions).forEach((e) => {
-    const filtered = (reactions[e] || []).filter((uid) => uid !== user.uid);
-    if (filtered.length > 0) updatedReactions[e] = filtered;
-  });
+    // Strip the user out of every emoji's reactor list first
+    const updatedReactions = {};
+    Object.keys(reactions).forEach((e) => {
+      const filtered = (reactions[e] || []).filter((uid) => uid !== user.uid);
+      if (filtered.length > 0) updatedReactions[e] = filtered;
+    });
 
-  // If they clicked the emoji they already had, this is a toggle-off → leave removed.
-  // Otherwise, add them to the newly clicked emoji.
-  if (currentEmoji !== emoji) {
-    updatedReactions[emoji] = [...(updatedReactions[emoji] || []), user.uid];
-  }
-
-  const updatedComments = (post.comments || []).map((c) =>
-    c.createdAt === comment.createdAt && c.uid === comment.uid
-      ? { ...c, reactions: updatedReactions }
-      : c
-  );
-
-  try {
-    await updateDoc(doc(db, "posts", post.id), { comments: updatedComments });
-  } catch (err) {
-    console.error(err);
-    setError("Failed to update reaction.");
-  }
-};
-  const handleFollowToggle = useCallback(async (targetUid, isCurrentlyFollowing) => {
-    if (!user || !targetUid || targetUid === user.uid) return;
-    try {
-      await setDoc(doc(db, "users", user.uid), {
-        following: isCurrentlyFollowing ? arrayRemove(targetUid) : arrayUnion(targetUid),
-      }, { merge: true });
-      await setDoc(doc(db, "users", targetUid), {
-        followers: isCurrentlyFollowing ? arrayRemove(user.uid) : arrayUnion(user.uid),
-      }, { merge: true });
-      if (!isCurrentlyFollowing) {
-        await createNotification({ toUid: targetUid, fromUser: user, type: "follow" });
-      }
-    } catch (err) {
-      console.error("Follow toggle failed:", err);
-      setError("Failed to update follow status.");
+    // If they clicked the emoji they already had, this is a toggle-off → leave removed.
+    // Otherwise, add them to the newly clicked emoji.
+    if (currentEmoji !== emoji) {
+      updatedReactions[emoji] = [...(updatedReactions[emoji] || []), user.uid];
     }
-  }, [user]);
+
+    const updatedComments = (post.comments || []).map((c) =>
+      c.createdAt === comment.createdAt && c.uid === comment.uid
+        ? { ...c, reactions: updatedReactions }
+        : c,
+    );
+
+    try {
+      await updateDoc(doc(db, "posts", post.id), { comments: updatedComments });
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update reaction.");
+    }
+  };
+  const handleFollowToggle = useCallback(
+    async (targetUid, isCurrentlyFollowing) => {
+      if (!user || !targetUid || targetUid === user.uid) return;
+      try {
+        await setDoc(
+          doc(db, "users", user.uid),
+          {
+            following: isCurrentlyFollowing
+              ? arrayRemove(targetUid)
+              : arrayUnion(targetUid),
+          },
+          { merge: true },
+        );
+        await setDoc(
+          doc(db, "users", targetUid),
+          {
+            followers: isCurrentlyFollowing
+              ? arrayRemove(user.uid)
+              : arrayUnion(user.uid),
+          },
+          { merge: true },
+        );
+        if (!isCurrentlyFollowing) {
+          await createNotification({
+            toUid: targetUid,
+            fromUser: user,
+            type: "follow",
+          });
+        }
+      } catch (err) {
+        console.error("Follow toggle failed:", err);
+        setError("Failed to update follow status.");
+      }
+    },
+    [user],
+  );
 
   // ── Memoized derived feed data ────────────────────────────────────────────
   const filteredPosts = useMemo(() => {
     let result = posts;
-    if (activeTab === "questions") result = posts.filter((p) => p.postType === "question");
-    else if (activeTab === "collaboration") result = posts.filter((p) => p.postType === "collaboration");
-    if (activeTag) result = result.filter((p) => (p.tags || []).includes(activeTag));
+    if (activeTab === "questions")
+      result = posts.filter((p) => p.postType === "question");
+    else if (activeTab === "collaboration")
+      result = posts.filter((p) => p.postType === "collaboration");
+    if (activeTag)
+      result = result.filter((p) => (p.tags || []).includes(activeTag));
     return result;
   }, [posts, activeTab, activeTag]);
 
@@ -373,8 +454,10 @@ const handleToggleCommentReaction = async (post, comment, emoji) => {
   }, [posts]);
 
   const trendingTags = useMemo(() => {
-    const counts = {}, newToday = {};
-    const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+    const counts = {},
+      newToday = {};
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
     posts.forEach((post) => {
       const postDate = post.timestamp?.toDate ? post.timestamp.toDate() : null;
       const isToday = postDate && postDate >= startOfToday;
@@ -389,7 +472,9 @@ const handleToggleCommentReaction = async (post, comment, emoji) => {
       .map(([tag, count]) => ({
         tag,
         posts: `${count} post${count === 1 ? "" : "s"}`,
-        new: newToday[tag] ? `+${newToday[tag]} new today` : "No new posts today",
+        new: newToday[tag]
+          ? `+${newToday[tag]} new today`
+          : "No new posts today",
       }));
   }, [posts]);
 
@@ -405,7 +490,8 @@ const handleToggleCommentReaction = async (post, comment, emoji) => {
       }
     }
     try {
-      setPosting(true); setError("");
+      setPosting(true);
+      setError("");
       const postData = {
         uid: user.uid,
         displayName: user.displayName || user.email || "Anonymous User",
@@ -414,7 +500,9 @@ const handleToggleCommentReaction = async (post, comment, emoji) => {
         tags: selectedTags,
         postType,
         timestamp: serverTimestamp(),
-        likes: 0, likedBy: [], comments: [],
+        likes: 0,
+        likedBy: [],
+        comments: [],
       };
       // Attach poll data if poll type
       if (postType === "poll") {
@@ -422,6 +510,7 @@ const handleToggleCommentReaction = async (post, comment, emoji) => {
         postData.pollVotes = {}; // { "0": [], "1": [], ... }
       }
       await addDoc(collection(db, "posts"), postData);
+      captureEvent(EVENTS.POST_CREATED, { postType, tagCount: selectedTags.length });
       await updateStreak(user.uid);
       setContent("");
       setSelectedTags([]);
@@ -430,7 +519,9 @@ const handleToggleCommentReaction = async (post, comment, emoji) => {
     } catch (err) {
       console.error(err);
       setError("Failed to create post. Please try again.");
-    } finally { setPosting(false); }
+    } finally {
+      setPosting(false);
+    }
   };
 
   const handleInsertCode = (codeBlock) => {
@@ -447,41 +538,73 @@ const handleToggleCommentReaction = async (post, comment, emoji) => {
         likes: (post.likedBy || []).length + (liked ? -1 : 1),
       });
       if (!liked) {
-        await createNotification({ toUid: post.uid, fromUser: user, type: "like", postId: post.id });
+        await createNotification({
+          toUid: post.uid,
+          fromUser: user,
+          type: "like",
+          postId: post.id,
+        });
       }
-    } catch (err) { console.error(err); setError("Failed to update like."); }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update like.");
+    }
   };
 
   const handleToggleSave = async (postId) => {
     if (!user) return;
     const isSaved = savedPostIds.includes(postId);
     try {
-      await setDoc(doc(db, "users", user.uid), {
-        savedPosts: isSaved ? arrayRemove(postId) : arrayUnion(postId),
-      }, { merge: true });
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          savedPosts: isSaved ? arrayRemove(postId) : arrayUnion(postId),
+        },
+        { merge: true },
+      );
 
       const post = posts.find((p) => p.id === postId);
       const currentCount = post?.saveCount || 0;
       await updateDoc(doc(db, "posts", postId), {
         saveCount: isSaved ? Math.max(0, currentCount - 1) : currentCount + 1,
       });
-    } catch (err) { console.error(err); setError("Failed to update saved posts."); }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update saved posts.");
+    }
   };
 
   const handleDeletePost = async (postId) => {
     if (!window.confirm("Delete this post? This cannot be undone.")) return;
-    try { await deleteDoc(doc(db, "posts", postId)); }
-    catch (err) { console.error(err); setError("Failed to delete post."); }
+    try {
+      await deleteDoc(doc(db, "posts", postId));
+    } catch (err) {
+      console.error(err);
+      setError("Failed to delete post.");
+    }
   };
 
-  const startEdit = (post) => { setEditingId(post.id); setEditContent(post.content); };
-  const cancelEdit = () => { setEditingId(null); setEditContent(""); };
+  const startEdit = (post) => {
+    setEditingId(post.id);
+    setEditContent(post.content);
+  };
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditContent("");
+  };
   const handleSaveEdit = async (postId) => {
     if (!editContent.trim()) return;
     try {
-      await updateDoc(doc(db, "posts", postId), { content: editContent.trim(), edited: true });
-      setEditingId(null); setEditContent("");
-    } catch (err) { console.error(err); setError("Failed to update post."); }
+      await updateDoc(doc(db, "posts", postId), {
+        content: editContent.trim(),
+        edited: true,
+      });
+      setEditingId(null);
+      setEditContent("");
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update post.");
+    }
   };
 
   // ── Poll voting ───────────────────────────────────────────────────────────
@@ -492,7 +615,7 @@ const handleToggleCommentReaction = async (post, comment, emoji) => {
 
     // Find if user already voted for any option
     const prevVotedIdx = options.findIndex((_, idx) =>
-      (votes[idx] || []).includes(user.uid)
+      (votes[idx] || []).includes(user.uid),
     );
 
     // Build updated votes object
@@ -500,12 +623,16 @@ const handleToggleCommentReaction = async (post, comment, emoji) => {
 
     // Remove previous vote if any
     if (prevVotedIdx !== -1 && prevVotedIdx !== optionIdx) {
-      updatedVotes[prevVotedIdx] = (votes[prevVotedIdx] || []).filter((uid) => uid !== user.uid);
+      updatedVotes[prevVotedIdx] = (votes[prevVotedIdx] || []).filter(
+        (uid) => uid !== user.uid,
+      );
     }
 
     // Toggle: if clicking same option, remove vote; otherwise add
     if (prevVotedIdx === optionIdx) {
-      updatedVotes[optionIdx] = (votes[optionIdx] || []).filter((uid) => uid !== user.uid);
+      updatedVotes[optionIdx] = (votes[optionIdx] || []).filter(
+        (uid) => uid !== user.uid,
+      );
     } else {
       updatedVotes[optionIdx] = [...(votes[optionIdx] || []), user.uid];
     }
@@ -537,18 +664,35 @@ const handleToggleCommentReaction = async (post, comment, emoji) => {
       edited: false,
     };
     try {
-      await updateDoc(doc(db, "posts", post.id), { comments: arrayUnion(newComment) });
+      await updateDoc(doc(db, "posts", post.id), {
+        comments: arrayUnion(newComment),
+      });
       await updateStreak(user.uid);
       setCommentDraft("");
-      await createNotification({ toUid: post.uid, fromUser: user, type: "comment", postId: post.id, preview: trimmed });
-    } catch (err) { console.error(err); setError("Failed to add comment."); }
+      await createNotification({
+        toUid: post.uid,
+        fromUser: user,
+        type: "comment",
+        postId: post.id,
+        preview: trimmed,
+      });
+    } catch (err) {
+      console.error(err);
+      setError("Failed to add comment.");
+    }
   };
 
   const startEditComment = (comment) => {
-    setEditingComment({ postId: comment._postId, createdAt: comment.createdAt });
+    setEditingComment({
+      postId: comment._postId,
+      createdAt: comment.createdAt,
+    });
     setEditingCommentDraft(comment.content);
   };
-  const cancelEditComment = () => { setEditingComment(null); setEditingCommentDraft(""); };
+  const cancelEditComment = () => {
+    setEditingComment(null);
+    setEditingCommentDraft("");
+  };
 
   const handleSaveCommentEdit = async (post, oldComment) => {
     if (!editingCommentDraft.trim()) return;
@@ -556,30 +700,54 @@ const handleToggleCommentReaction = async (post, comment, emoji) => {
     const updatedComments = (post.comments || []).map((c) =>
       c.createdAt === oldComment.createdAt && c.uid === oldComment.uid
         ? { ...c, content: trimmed, edited: true }
-        : c
+        : c,
     );
     try {
       await updateDoc(doc(db, "posts", post.id), { comments: updatedComments });
-      setEditingComment(null); setEditingCommentDraft("");
-      await createNotification({ toUid: post.uid, fromUser: user, type: "comment_edit", postId: post.id, preview: trimmed });
-    } catch (err) { console.error(err); setError("Failed to edit comment."); }
+      setEditingComment(null);
+      setEditingCommentDraft("");
+      await createNotification({
+        toUid: post.uid,
+        fromUser: user,
+        type: "comment_edit",
+        postId: post.id,
+        preview: trimmed,
+      });
+    } catch (err) {
+      console.error(err);
+      setError("Failed to edit comment.");
+    }
   };
 
   const handleDeleteComment = async (post, comment) => {
     if (!window.confirm("Delete this comment?")) return;
     const updatedComments = (post.comments || []).filter(
-      (c) => !(c.createdAt === comment.createdAt && c.uid === comment.uid)
+      (c) => !(c.createdAt === comment.createdAt && c.uid === comment.uid),
     );
-    try { await updateDoc(doc(db, "posts", post.id), { comments: updatedComments }); }
-    catch (err) { console.error(err); setError("Failed to delete comment."); }
+    try {
+      await updateDoc(doc(db, "posts", post.id), { comments: updatedComments });
+    } catch (err) {
+      console.error(err);
+      setError("Failed to delete comment.");
+    }
   };
 
   // ── Shared props bundles ──────────────────────────────────────────────────
   const sharedPostProps = {
-    user, isMobile, openCommentsFor, commentDraft, setCommentDraft,
-    editingId, editContent, setEditContent, editingComment,
-    editingCommentDraft, setEditingCommentDraft, savedPostIds,
-    getLiveName, getLivePhoto,
+    user,
+    isMobile,
+    openCommentsFor,
+    commentDraft,
+    setCommentDraft,
+    editingId,
+    editContent,
+    setEditContent,
+    editingComment,
+    editingCommentDraft,
+    setEditingCommentDraft,
+    savedPostIds,
+    getLiveName,
+    getLivePhoto,
     onOpenProfile: openProfile,
     onToggleLike: handleToggleLike,
     onToggleSave: handleToggleSave,
@@ -594,13 +762,22 @@ const handleToggleCommentReaction = async (post, comment, emoji) => {
     onSaveCommentEdit: handleSaveCommentEdit,
     onDeleteComment: handleDeleteComment,
     onVotePoll: handleVotePoll,
-     onToggleCommentReaction: handleToggleCommentReaction,
+    onToggleCommentReaction: handleToggleCommentReaction,
   };
 
   const composerProps = {
-    content, setContent, postType, setPostType,
-    selectedTags, setSelectedTags, customTag, setCustomTag,
-    showAiDraft, setShowAiDraft, posting, error,
+    content,
+    setContent,
+    postType,
+    setPostType,
+    selectedTags,
+    setSelectedTags,
+    customTag,
+    setCustomTag,
+    showAiDraft,
+    setShowAiDraft,
+    posting,
+    error,
     onPost: handleCreatePost,
     onOpenCodeEditor: () => setShowCodeEditor(true),
     pollOptions,
@@ -608,8 +785,11 @@ const handleToggleCommentReaction = async (post, comment, emoji) => {
   };
 
   const feedColumnProps = {
-    posts, filteredPosts, trendingPosts,
-    activeTab, setActiveTab,
+    posts,
+    filteredPosts,
+    trendingPosts,
+    activeTab,
+    setActiveTab,
     highlightedPostId,
     ...sharedPostProps,
     ...composerProps,
@@ -617,7 +797,9 @@ const handleToggleCommentReaction = async (post, comment, emoji) => {
 
   return (
     <ProtectedRoute>
-      <main style={{ backgroundColor: "var(--bg-primary)", minHeight: "100vh" }}>
+      <main
+        style={{ backgroundColor: "var(--bg-primary)", minHeight: "100vh" }}
+      >
         <div style={S.appContainer}>
           <Navbar variant="dashboard" />
 
@@ -634,12 +816,13 @@ const handleToggleCommentReaction = async (post, comment, emoji) => {
 
               <FeedColumn {...feedColumnProps} />
 
-              <RightSidebar 
-                  trendingTags={trendingTags} 
-                  activeMembers={activeMembers}
-                  activeTag={activeTag}
-                  onTagClick={(tag) => setActiveTag((prev) => prev === tag ? null : tag)}
-                
+              <RightSidebar
+                trendingTags={trendingTags}
+                activeMembers={activeMembers}
+                activeTag={activeTag}
+                onTagClick={(tag) =>
+                  setActiveTag((prev) => (prev === tag ? null : tag))
+                }
               />
             </div>
           )}

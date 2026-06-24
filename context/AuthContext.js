@@ -12,6 +12,8 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db, googleProvider, githubProvider } from "../lib/firebase";
+import { identifyUser } from "../lib/posthog/helpers";
+import posthog from "posthog-js";
 
 const AuthContext = createContext({});
 
@@ -123,6 +125,14 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        identifyUser(currentUser.uid, {
+          email: currentUser.email,
+          displayName: currentUser.displayName,
+        });
+      } else {
+        posthog.reset();
+      }
       setUser(currentUser);
       setLoading(false);
     });
