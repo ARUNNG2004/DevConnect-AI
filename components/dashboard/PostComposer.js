@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import AIDraftAssistant from "../AIDraftAssistant";
 import UserAvatar from "./UserAvatar";
 
@@ -196,6 +196,42 @@ const S = {
     lineHeight: 1,
     flexShrink: 0,
   },
+  // ── Image attachment styles ───────────────────────────────────────────────
+  imagePreviewWrapper: {
+    position: "relative",
+    display: "inline-block",
+    marginTop: 4,
+  },
+  imagePreview: {
+    display: "block",
+    maxWidth: "100%",
+    maxHeight: 240,
+    borderRadius: "var(--radius-md)",
+    border: "1px solid var(--border-color)",
+    objectFit: "cover",
+  },
+  imageRemoveBtn: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 24,
+    height: 24,
+    borderRadius: "50%",
+    backgroundColor: "rgba(0,0,0,0.7)",
+    border: "none",
+    color: "#fff",
+    fontSize: "0.75rem",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    lineHeight: 1,
+  },
+  uploadingText: {
+    fontSize: "0.8rem",
+    color: "var(--text-muted)",
+    paddingTop: 4,
+  },
 };
 
 const AVAILABLE_TAGS = [
@@ -224,7 +260,6 @@ export default function PostComposer({
   setCustomTag,
   showAiDraft,
   setShowAiDraft,
-  posting,
   error,
   isMobile,
   onPost,
@@ -234,7 +269,27 @@ export default function PostComposer({
   // Poll props
   pollOptions,
   setPollOptions,
+  // Image attachment props
+  imageURL,
+  setImageURL,
+  imageUploading,
+  setImageUploading,
 }) {
+  const fileInputRef = useRef(null);
+  const [posting, setPosting] = useState(false);
+
+  const handlePost = async () => {
+    if (posting || imageUploading) return;
+    try {
+      setPosting(true);
+      await onPost();
+      setPosting(false);
+    } catch (_) {
+      // error already set in page.js
+    } finally {
+      setPosting(false);
+    }
+  };
   const toggleTag = (tag) =>
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
@@ -260,10 +315,59 @@ export default function PostComposer({
     setPollOptions((prev) => [...prev, ""]);
   };
 
+  const handleImageClick = () => {
+    if (imageUploading) return;
+    fileInputRef.current?.click();
+  };
+
+  const handleImageChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image must be under 5MB.");
+      return;
+    }
+    setImageUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET);
+      formData.append("public_id", `post_images/${Date.now()}`);
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        { method: "POST", body: formData }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || "Upload failed");
+      setImageURL(data.secure_url);
+    } catch (err) {
+      console.error("Image upload failed:", err);
+      alert("Image upload failed. Please try again.");
+    } finally {
+      setImageUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImageURL("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   // Poll is postable if question + at least 2 non-empty options
   const pollReady = postType === "poll"
     ? content.trim().length > 0 && pollOptions.filter((o) => o.trim()).length >= 2
     : content.trim().length > 0;
+
+  // Button is only hard-disabled while an async operation is in flight.
+  // When the composer is empty we keep it visually muted but NOT disabled,
+  // so after a successful post it snaps back to the green "Post" style.
+  const isInFlight   = posting || imageUploading;
+  const isPostDisabled = isInFlight;
 
   return (
     <div id="composer-card" style={S.composerCard}>
@@ -286,6 +390,22 @@ export default function PostComposer({
           />
         </div>
       </div>
+
+      {/* ── Image preview ── */}
+      {imageUploading && (
+        <p style={S.uploadingText}>⏳ Uploading image...</p>
+      )}
+      {imageURL && !imageUploading && (
+        <div style={S.imagePreviewWrapper}>
+          <img src={imageURL} alt="Post attachment" style={S.imagePreview} />
+          <button
+            style={S.imageRemoveBtn}
+            onClick={handleRemoveImage}
+            title="Remove image"
+            type="button"
+          >✕</button>
+        </div>
+      )}
 
       <div style={S.postTypeRow}>
         {POST_TYPES.map(({ id, label }) => (
@@ -381,7 +501,24 @@ export default function PostComposer({
 
       <div style={S.composerActions}>
         <div style={S.composerTools}>
-          <button style={S.composerToolBtn} title="Add Image">🖼️</button>
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={handleImageChange}
+          />
+          <button
+            style={{
+              ...S.composerToolBtn,
+              color: imageURL ? "var(--accent-primary)" : "var(--text-muted)",
+              opacity: imageUploading ? 0.5 : 1,
+            }}
+            title={imageURL ? "Image attached" : "Add Image"}
+            onClick={handleImageClick}
+            type="button"
+          >🖼️</button>
           <button
             id="open-code-editor-btn"
             style={S.composerToolBtn}
@@ -409,11 +546,11 @@ export default function PostComposer({
         </label>
 
         <button
-          style={posting || !pollReady ? S.btnPostDisabled : S.btnPost}
-          onClick={onPost}
-          disabled={posting || !pollReady}
+          style={isInFlight || !pollReady ? S.btnPostDisabled : S.btnPost}
+          onClick={handlePost}
+          disabled={isPostDisabled}
         >
-          {posting ? "Posting..." : "Post"}
+          {posting ? "Posting..." : imageUploading ? "Uploading..." : "Post"}
         </button>
       </div>
 
