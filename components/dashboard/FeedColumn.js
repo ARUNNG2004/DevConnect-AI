@@ -115,12 +115,15 @@ export default function FeedColumn({
   setCustomTag,
   showAiDraft,
   setShowAiDraft,
-  posting,
   error,
   onPost,
   onOpenCodeEditor,
   pollOptions,
   setPollOptions,
+  imageURL,
+  setImageURL,
+  imageUploading,
+  setImageUploading,
 }) {
   const postCardProps = {
     user, isMobile, openCommentsFor, commentDraft, setCommentDraft,
@@ -148,7 +151,6 @@ export default function FeedColumn({
         setCustomTag={setCustomTag}
         showAiDraft={showAiDraft}
         setShowAiDraft={setShowAiDraft}
-        posting={posting}
         error={error}
         isMobile={isMobile}
         onPost={onPost}
@@ -157,6 +159,10 @@ export default function FeedColumn({
         getLiveName={getLiveName}
         pollOptions={pollOptions}
         setPollOptions={setPollOptions}
+        imageURL={imageURL}
+        setImageURL={setImageURL}
+        imageUploading={imageUploading}
+        setImageUploading={setImageUploading}
       />
 
       <div style={S.feedFiltersBar}>

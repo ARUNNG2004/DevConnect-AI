@@ -86,7 +86,6 @@ export default function Dashboard() {
 
   // ── Composer state ───────────────────────────────────────────────────────
   const [content, setContent] = useState("");
-  const [posting, setPosting] = useState(false);
   const [postType, setPostType] = useState("discussion");
   const [selectedTags, setSelectedTags] = useState([]);
   const [customTag, setCustomTag] = useState("");
@@ -95,6 +94,8 @@ export default function Dashboard() {
 
   const [error, setError] = useState("");
   const [pollOptions, setPollOptions] = useState(["", ""]);
+  const [imageURL, setImageURL] = useState("");
+  const [imageUploading, setImageUploading] = useState(false);
 
   // ── Feed / UI state ──────────────────────────────────────────────────────
   const [posts, setPosts] = useState([]);
@@ -478,7 +479,6 @@ export default function Dashboard() {
       }));
   }, [posts]);
 
-  // ── Post CRUD ─────────────────────────────────────────────────────────────
   const handleCreatePost = async () => {
     if (!content.trim() || !user) return;
     // Poll validation
@@ -490,7 +490,6 @@ export default function Dashboard() {
       }
     }
     try {
-      setPosting(true);
       setError("");
       const postData = {
         uid: user.uid,
@@ -503,24 +502,28 @@ export default function Dashboard() {
         likes: 0,
         likedBy: [],
         comments: [],
+        ...(imageURL ? { imageURL } : {}),
       };
-      // Attach poll data if poll type
       if (postType === "poll") {
         postData.pollOptions = pollOptions.filter((o) => o.trim());
-        postData.pollVotes = {}; // { "0": [], "1": [], ... }
+        postData.pollVotes = {};
       }
       await addDoc(collection(db, "posts"), postData);
-      captureEvent(EVENTS.POST_CREATED, { postType, tagCount: selectedTags.length });
-      await updateStreak(user.uid);
+      try { captureEvent(EVENTS.POST_CREATED, { postType, tagCount: selectedTags.length }); } catch (_) {}
+      try { await updateStreak(user.uid); } catch (_) {}
+      // reset all composer fields on success
       setContent("");
       setSelectedTags([]);
+      setCustomTag("");
       setPostType("discussion");
       setPollOptions(["", ""]);
+      setImageURL("");
+      setImageUploading(false);
+      setError("");
     } catch (err) {
       console.error(err);
       setError("Failed to create post. Please try again.");
-    } finally {
-      setPosting(false);
+      throw err; // re-throw so PostComposer's local posting state can reset
     }
   };
 
@@ -776,12 +779,15 @@ export default function Dashboard() {
     setCustomTag,
     showAiDraft,
     setShowAiDraft,
-    posting,
     error,
     onPost: handleCreatePost,
     onOpenCodeEditor: () => setShowCodeEditor(true),
     pollOptions,
     setPollOptions,
+    imageURL,
+    setImageURL,
+    imageUploading,
+    setImageUploading,
   };
 
   const feedColumnProps = {

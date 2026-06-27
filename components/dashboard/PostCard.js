@@ -71,6 +71,15 @@ const S = {
     lineHeight: 1.5,
     marginBottom: 2,
   },
+  postImage: {
+    display: "block",
+    width: "100%",
+    maxHeight: 360,
+    objectFit: "cover",
+    borderRadius: "var(--radius-md)",
+    border: "1px solid var(--border-color)",
+    marginTop: 8,
+  },
   postTags: { display: "flex", flexWrap: "wrap", gap: 6, marginTop: 2 },
   postTag: { color: "var(--accent-primary)", fontSize: "0.82rem", fontWeight: 500 },
   postActions: {
@@ -534,6 +543,16 @@ export default function PostCard({
             {post.content}
           </ReactMarkdown>
         </div>
+      )}
+
+      {/* ── Attached image ── */}
+      {post.imageURL && (
+        <img
+          src={post.imageURL}
+          alt="Post attachment"
+          style={S.postImage}
+          loading="lazy"
+        />
       )}
 
       {/* ── Tags ── */}
