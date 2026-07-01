@@ -24,6 +24,14 @@
   --accent-ai-hover: #9333ea;
   --accent-ai-alpha: rgba(168, 85, 247, 0.15);
 
+  --code-text: #e2e8f0;
+  --code-comment: #64748b;
+  --code-keyword: #c084fc;
+  --code-string: #34d399;
+  --code-number: #38bdf8;
+  --code-placeholder: #64748b;
+  --mockup-line: rgba(255, 255, 255, 0.08);
+
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
@@ -49,7 +57,7 @@
 
   --text-primary: #0f172a;
   --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  --text-muted: #64748b;
 
   --accent-primary: #0284c7;
   --accent-primary-hover: #0369a1;
@@ -60,6 +68,14 @@
   --accent-ai: #7c3aed;
   --accent-ai-hover: #6d28d9;
   --accent-ai-alpha: rgba(124, 58, 237, 0.1);
+
+  --code-text: #0f172a;
+  --code-comment: #475569;
+  --code-keyword: #7c3aed;
+  --code-string: #047857;
+  --code-number: #0369a1;
+  --code-placeholder: #64748b;
+  --mockup-line: rgba(71, 85, 105, 0.18);
 }
 
 /* ── Universal Styles ──────────────────────────────────────────────────────── */
