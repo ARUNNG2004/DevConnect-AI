@@ -63,6 +63,50 @@ const S = {
     textTransform: "uppercase",
     whiteSpace: "nowrap",
   }),
+  solvedBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    padding: "2px 8px",
+    backgroundColor: "rgba(52,211,153,0.12)",
+    border: "1px solid rgba(52,211,153,0.4)",
+    color: "#34d399",
+    borderRadius: "var(--radius-sm)",
+    fontSize: "0.7rem",
+    fontWeight: 600,
+    textTransform: "uppercase",
+    whiteSpace: "nowrap",
+  },
+  acceptedCommentWrapper: {
+    border: "1px solid rgba(52,211,153,0.35)",
+    borderRadius: "var(--radius-md)",
+    backgroundColor: "rgba(52,211,153,0.05)",
+    padding: "8px 10px",
+  },
+  acceptedLabel: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    fontSize: "0.72rem",
+    fontWeight: 600,
+    color: "#34d399",
+    marginBottom: 4,
+  },
+  btnAccept: (isAccepted) => ({
+    display: "flex",
+    alignItems: "center",
+    gap: 3,
+    padding: "2px 8px",
+    fontSize: "0.72rem",
+    fontWeight: 600,
+    border: isAccepted ? "1px solid rgba(52,211,153,0.6)" : "1px solid var(--border-color)",
+    borderRadius: "var(--radius-sm)",
+    backgroundColor: isAccepted ? "rgba(52,211,153,0.12)" : "transparent",
+    color: isAccepted ? "#34d399" : "var(--text-muted)",
+    cursor: "pointer",
+    transition: "all 0.15s",
+    whiteSpace: "nowrap",
+  }),
   postBody: { fontSize: "0.9rem", color: "var(--text-secondary)" },
   pollQuestion: {
     fontSize: "0.95rem",
@@ -450,6 +494,7 @@ export default function PostCard({
   onDeleteComment,
   onVotePoll,
   onToggleCommentReaction,
+  onMarkSolved,
 }) {
   const [openPickerFor, setOpenPickerFor] = useState(null);
 
@@ -495,7 +540,12 @@ export default function PostCard({
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-          <span style={S.categoryTag(type)}>{typeLabel}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={S.categoryTag(type)}>{typeLabel}</span>
+            {type === "question" && post.solved && (
+              <span style={S.solvedBadge}>✓ Solved</span>
+            )}
+          </div>
           <span style={S.postTimestamp}>
             {post.timestamp?.toDate
               ? post.timestamp.toDate().toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
@@ -602,13 +652,24 @@ export default function PostCard({
               const commentName   = getLiveName(c.uid, c.displayName);
               const commentKey    = `${c.uid}-${c.createdAt}`;
               const isPickerOpen  = openPickerFor === commentKey;
+              const isAccepted    = post.solved && post.solvedCommentId === c.createdAt;
+              const isPostAuthor  = user?.uid === post.uid;
+              const isQuestion    = post.postType === "question";
 
               // extra emojis that already have at least one reaction (show inline)
               const activeExtra = Object.keys(c.reactions || {})
                 .filter((e) => !DEFAULT_EMOJIS.includes(e) && (c.reactions[e]?.length || 0) > 0);
 
               return (
-                <div key={commentKey} style={S.commentItem}>
+                <div
+                  key={commentKey}
+                  style={isAccepted ? { ...S.commentItem, ...S.acceptedCommentWrapper } : S.commentItem}
+                >
+                  {/* Accepted answer label */}
+                  {isAccepted && (
+                    <div style={S.acceptedLabel}>✓ Accepted Answer</div>
+                  )}
+
                   {/* Comment header */}
                   <div style={S.commentHeader}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -629,6 +690,15 @@ export default function PostCard({
                     <div style={S.commentMeta}>
                       <span>{new Date(c.createdAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                       {c.edited && <span style={{ fontStyle: "italic" }}>(edited)</span>}
+                      {isQuestion && isPostAuthor && !isEditingThis && (
+                        <button
+                          style={S.btnAccept(isAccepted)}
+                          onClick={() => onMarkSolved?.(post, c)}
+                          title={isAccepted ? "Unmark accepted answer" : "Mark as accepted answer"}
+                        >
+                          {isAccepted ? "✓ Accepted" : "✓ Accept"}
+                        </button>
+                      )}
                       {isOwner && !isEditingThis && (
                         <>
                           <button style={S.btnActionDanger} onClick={() => onStartEditComment({ ...c, _postId: post.id })}>✏️</button>

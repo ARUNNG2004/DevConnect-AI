@@ -735,6 +735,29 @@ export default function Dashboard() {
     }
   };
 
+  // ── Mark as Solved ────────────────────────────────────────────────────────
+  const handleMarkSolved = async (post, comment) => {
+    if (!user || user.uid !== post.uid) return;
+    const alreadySolved = post.solved && post.solvedCommentId === comment.createdAt;
+    try {
+      await updateDoc(doc(db, "posts", post.id), {
+        solved: !alreadySolved,
+        solvedCommentId: alreadySolved ? null : comment.createdAt,
+      });
+      if (!alreadySolved && comment.uid !== user.uid) {
+        await createNotification({
+          toUid: comment.uid,
+          fromUser: user,
+          type: "solved",
+          postId: post.id,
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update solved status.");
+    }
+  };
+
   // ── Shared props bundles ──────────────────────────────────────────────────
   const sharedPostProps = {
     user,
@@ -766,6 +789,7 @@ export default function Dashboard() {
     onDeleteComment: handleDeleteComment,
     onVotePoll: handleVotePoll,
     onToggleCommentReaction: handleToggleCommentReaction,
+    onMarkSolved: handleMarkSolved,
   };
 
   const composerProps = {

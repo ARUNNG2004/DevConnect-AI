@@ -104,6 +104,7 @@ export default function FeedColumn({
   onDeleteComment,
   onVotePoll,
   onToggleCommentReaction,
+  onMarkSolved,
   // Composer props
   content,
   setContent,
@@ -135,6 +136,7 @@ export default function FeedColumn({
     onDeleteComment,
     onVotePoll,
     onToggleCommentReaction,
+    onMarkSolved,
   };
 
   return (

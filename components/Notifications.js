@@ -135,6 +135,7 @@ const ICONS = {
   follow: "➕",
   comment: "💬",
   comment_edit: "✏️",
+  solved: "✅",
 };
 
 function textFor(n) {
@@ -147,6 +148,8 @@ function textFor(n) {
       return <>commented on your post{n.preview ? `: "${n.preview}"` : ""}</>;
     case "comment_edit":
       return <>edited their comment{n.preview ? `: "${n.preview}"` : ""}</>;
+    case "solved":
+      return <>marked your comment as the accepted answer ✅</>;
     default:
       return <>interacted with your content</>;
   }
