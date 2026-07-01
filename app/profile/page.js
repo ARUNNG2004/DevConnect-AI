@@ -164,6 +164,46 @@ const S = {
   postTimestamp: { fontSize: "0.72rem", color: "var(--text-muted)" },
   postContent: { fontSize: "0.88rem", color: "var(--text-primary)", lineHeight: 1.6, margin: 0 },
   postStats: { display: "flex", gap: 12, fontSize: "0.78rem", color: "var(--text-muted)" },
+  // ── GitHub Roast styles ───────────────────────────────────────────────────
+  roastCard: {
+    backgroundColor: "var(--bg-primary)",
+    border: "1px solid var(--border-color)",
+    borderRadius: "var(--radius-md)",
+    padding: "14px 16px",
+    marginTop: 14,
+  },
+  roastHeader: {
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+    gap: 8, marginBottom: 12,
+  },
+  roastTitle: {
+    color: "var(--text-primary)", fontWeight: 700, fontSize: "0.92rem", margin: 0,
+    display: "flex", alignItems: "center", gap: 6,
+  },
+  statPill: {
+    display: "inline-flex", alignItems: "center", gap: 4,
+    padding: "3px 10px", borderRadius: "var(--radius-full)",
+    fontSize: "0.74rem", fontWeight: 600,
+    border: "1px solid var(--border-color)",
+    backgroundColor: "var(--bg-secondary)",
+    color: "var(--text-secondary)",
+  },
+  roastText: {
+    fontSize: "0.88rem", color: "var(--text-secondary)", lineHeight: 1.65,
+    whiteSpace: "pre-wrap", margin: 0,
+  },
+  btnRoast: {
+    display: "inline-flex", alignItems: "center", gap: 6,
+    padding: "7px 16px",
+    backgroundColor: "transparent",
+    border: "1px solid var(--border-color)",
+    borderRadius: "var(--radius-md)",
+    color: "var(--text-secondary)",
+    fontWeight: 600, fontSize: "0.82rem",
+    cursor: "pointer", fontFamily: "inherit",
+    transition: "all 0.15s",
+    whiteSpace: "nowrap",
+  },
   modalOverlay: {
     position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)",
     zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center",
@@ -841,6 +881,114 @@ function PostsSection({ myPosts, postCount, S, cm, pinnedPosts, onTogglePin, pin
   );
 }
 
+// ── GitHub Roast Card ────────────────────────────────────────────────────────
+function GitHubRoastCard({ githubUrl, S }) {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+
+  const handleRoast = async () => {
+    if (!githubUrl) return;
+    setLoading(true);
+    setError("");
+    setResult(null);
+    try {
+      const res = await fetch("/api/github-roast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ githubUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Something went wrong.");
+        return;
+      }
+      setResult(data);
+    } catch {
+      setError("Failed to reach the server. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!githubUrl) return null;
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      {!result && (
+        <button
+          style={S.btnRoast}
+          onClick={handleRoast}
+          disabled={loading}
+          className="border border-blue-400"
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "var(--accent-primary)";
+            e.currentTarget.style.color = "var(--accent-primary)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "var(--text-secondary)";
+          }}
+        >
+          {loading ? "⏳ Analysing your GitHub..." : "GitHub Reality Check!"}
+        </button>
+      )}
+
+      {error && (
+        <p style={{ color: "#ef4444", fontSize: "0.82rem", marginTop: 8 }}>{error}</p>
+      )}
+
+      {result && (
+        <div style={S.roastCard}>
+          {/* Header */}
+          <div style={S.roastHeader}>
+            <p style={S.roastTitle}>
+              GitHub Reality Check
+              <span style={{ color: "var(--text-muted)", fontWeight: 400, fontSize: "0.78rem" }}>
+                @{result.username}
+              </span>
+            </p>
+            <button
+              style={{ ...S.btnRoast, padding: "4px 10px", fontSize: "0.75rem" }}
+              onClick={() => setResult(null)}
+            >
+              ✕ Close
+            </button>
+          </div>
+
+          {/* Stats pills */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+            <span style={S.statPill}>📦 {result.stats.total} repos</span>
+            <span style={S.statPill}>💀 {result.stats.graveyardRepos.length} graveyard</span>
+            <span style={S.statPill}>📝 {result.stats.noDescription} no description</span>
+            <span style={S.statPill}>🔗 {result.stats.noHomepage} no demo</span>
+            <span style={S.statPill}>🍴 {result.stats.forkGraveyard} fork graveyards</span>
+            {result.stats.solidRepos.length > 0 && (
+              <span style={{ ...S.statPill, borderColor: "rgba(34,197,94,0.4)", color: "#22c55e", backgroundColor: "rgba(34,197,94,0.08)" }}>
+                ✅ {result.stats.solidRepos.length} solid
+              </span>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div style={{ borderTop: "1px solid var(--border-color)", marginBottom: 14 }} />
+
+          {/* AI Roast text */}
+          <p style={S.roastText}>{result.roast}</p>
+
+          {/* Re-run button */}
+          <button
+            style={{ ...S.btnRoast, marginTop: 14, fontSize: "0.78rem", padding: "5px 12px" }}
+            onClick={handleRoast}
+            disabled={loading}
+          >
+            {loading ? "⏳ Re-analysing..." : "🔄 Re-run"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function Profile() {
   const { user, logout, loading } = useAuth();
@@ -1179,6 +1327,33 @@ export default function Profile() {
               ))}
             </div>
 
+            {/* GitHub Reality Check — mobile standalone */}
+            <div style={{ ...S.card, ...cm, marginTop: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <h2 style={{ color: "var(--text-primary)", fontSize: "1rem", fontWeight: 700, margin: 0 }}>
+                  GitHub Reality Check
+                </h2>
+                <span style={{ fontSize: "0.68rem", color: "var(--text-muted)", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-full)", padding: "2px 7px" }}>
+                  AI-powered
+                </span>
+              </div>
+              {links.github ? (
+                <GitHubRoastCard githubUrl={links.github} S={S} />
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", margin: 0, lineHeight: 1.5 }}>
+                    🐙 Add your GitHub link to get an AI roast of your repos.
+                  </p>
+                  <button
+                    onClick={startEditing}
+                    style={{ ...S.btnGhost, fontSize: "0.8rem", padding: "5px 14px", alignSelf: "flex-start" }}
+                  >
+                    ✏️ Add GitHub Link
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Account info */}
             <div style={{ ...S.card, ...cm, marginTop: 14 }}>
               <h2 style={{ color: "var(--text-primary)", fontSize: "1rem", margin: "0 0 16px 0", fontWeight: 600 }}>Account</h2>
@@ -1282,6 +1457,36 @@ export default function Profile() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* GitHub Reality Check — standalone section */}
+            <div style={{ ...S.card, marginBottom: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <h2 style={{ color: "var(--text-primary)", fontSize: "1rem", fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                  GitHub Reality Check
+                  <span style={{ fontSize: "0.72rem", fontWeight: 400, color: "var(--text-muted)", background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-full)", padding: "2px 8px" }}>
+                    AI-powered
+                  </span>
+                </h2>
+              </div>
+              {links.github ? (
+                <GitHubRoastCard githubUrl={links.github} S={S} />
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 0" }}>
+                  <span style={{ fontSize: "2rem" }}>🐙</span>
+                  <div>
+                    <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", margin: "0 0 8px 0", lineHeight: 1.5 }}>
+                      Add your GitHub profile link to get an AI-powered roast of your repos — what's solid, what's a graveyard, and how to fix it.
+                    </p>
+                    <button
+                      onClick={startEditing}
+                      style={{ ...S.btnGhost, fontSize: "0.8rem", padding: "5px 14px" }}
+                    >
+                      ✏️ Add GitHub Link
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Two-column bottom */}
