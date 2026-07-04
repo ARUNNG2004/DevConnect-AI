@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import FeedColumn from "./FeedColumn";
 import PostCard from "./PostCard";
 
@@ -177,6 +178,7 @@ const MOBILE_TABS = [
   { id: "trending", icon: "🔥", label: "Trending" },
   { id: "questions", icon: "❔", label: "Questions" },
   { id: "collaboration", icon: "🤝", label: "Collab" },
+  { id: "rooms", icon: "🚪", label: "Rooms" },
   { id: "members", icon: "👥", label: "Members" },
   { id: "saved", icon: "🔖", label: "Saved" },
 ];
@@ -193,6 +195,7 @@ export default function MobileView({
   onShowFeatureTour,
   feedColumnProps,
 }) {
+  const router = useRouter();
   const mobileTabs = MOBILE_TABS.map((tab) =>
     tab.id === "saved"
       ? { ...tab, badge: savedPostIds.length > 0 ? savedPostIds.length : null }
@@ -394,7 +397,13 @@ export default function MobileView({
 
       <nav style={S.bottomTabBar}>
         {mobileTabs.map(({ id, icon, label, badge }) => (
-          <button key={id} style={S.tabBarItem(mobileTab === id)} onClick={() => setMobileTab(id)}>
+          <button key={id} style={S.tabBarItem(mobileTab === id)} onClick={() => {
+            if (id === "rooms") {
+              router.push("/rooms");
+            } else {
+              setMobileTab(id);
+            }
+          }}>
             <span style={{ position: "relative", display: "inline-block" }}>
               <span style={S.tabBarIcon}>{icon}</span>
               {badge && (

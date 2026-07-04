@@ -129,6 +129,29 @@ export default function RightSidebar({ trendingTags, activeMembers, activeTag, o
         </button>
       </div>
 
+      {/* Rooms promo widget */}
+      <div id="rooms-promo-widget" style={{
+        background: "radial-gradient(circle at top right, rgba(59,130,246,0.15), transparent 60%), var(--bg-secondary)",
+        border: "1px solid rgba(59,130,246,0.3)",
+        borderRadius: "var(--radius-lg)",
+        padding: 20,
+        boxShadow: "var(--shadow-sm)",
+      }}>
+        <h3 style={{ ...S.widgetTitleAi, color: "#60a5fa" }}>
+          <span>Coding Rooms</span>
+          <span style={S.pulsePoint} />
+        </h3>
+        <p style={S.aiPromoText}>
+          Collaborate in real-time — chat, share notes, co-edit code, and meet with voice/video.
+        </p>
+        <button
+          style={{ ...S.btnAiCta, background: "rgba(59,130,246,0.9)" }}
+          onClick={() => router.push("/rooms")}
+        >
+          Open Rooms
+        </button>
+      </div>
+
       {/* Trending Tags widget */}
       <div id="trending-tags-widget" style={S.sidebarWidget}>
         <h3 style={S.widgetTitle}>Trending Tags</h3>

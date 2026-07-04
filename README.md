@@ -81,6 +81,17 @@ There's no single platform that combines all of this with built-in AI assistance
   - Powered by the **Sarvam AI** chat completions API via a secure server-side Next.js API route (`/api/ai-draft`).
 - Code Review Copilot (UI ready, backend in progress)
 
+### 🚪 Collaboration Rooms
+- Real-time collaboration rooms with chat, shared notes, code editor, and voice/video
+- Room creation with title, description, language, and private/public visibility
+- **Chat**: live messages via Firestore `onSnapshot`, send-on-enter, timestamp display
+- **Shared notes**: markdown notes with auto-save on debounce
+- **Code editor**: syntax-highlighted collaborative editing with debounced Firestore sync
+- **Voice/video**: WebRTC peer-to-peer calls with mic, camera, and screen-share controls
+- **Presence**: real-time member list, cursor tracking, heartbeat-based online status
+- **AI Room Summaries**: generate meeting summaries from chat and notes via Sarvam AI
+- Summary modal with markdown rendering (react-markdown + remark-gfm)
+
 ---
 
 ## 📁 Project Structure
@@ -90,16 +101,24 @@ DevConnect-AI/
 ├── app/
 │   ├── layout.js               # Root layout with AuthProvider
 │   ├── page.js                 # Landing page (features tour)
-│   ├── globals.css             # Global styles
+│   ├── globals.css             # Global styles + markdown styles
 │   ├── api/
 │   │   ├── ai-draft/
 │   │   │   └── route.js        # Sarvam AI-powered "Draft with AI" endpoint
-│   │   └── code-review/
-│   │       └── route.js        # Code review endpoint (in progress)
+│   │   ├── code-review/
+│   │   │   └── route.js        # Code review endpoint (in progress)
+│   │   └── rooms/
+│   │       └── [roomId]/
+│   │           └── summary/
+│   │               └── route.js  # AI room summary endpoint
 │   ├── dashboard/
 │   │   └── page.js             # Main community feed (protected)
 │   ├── login/
 │   │   └── page.js             # Login with Google / GitHub
+│   ├── rooms/
+│   │   ├── page.js             # Rooms hub — list/create rooms (protected)
+│   │   └── [roomId]/
+│   │       └── page.js         # Room workspace — chat, notes, editor, call
 │   ├── signup/
 │   │   └── page.js             # Signup with Google / GitHub
 │   ├── profile/
@@ -107,6 +126,18 @@ DevConnect-AI/
 │   └── settings/
 │       └── page.js             # Settings page
 ├── components/
+│   ├── rooms/
+│   │   ├── RoomCallControls.js # Voice/video/screen-share controls + camera preview
+│   │   ├── RoomChat.js         # Real-time chat panel
+│   │   ├── RoomCursorLayer.js  # Remote cursor/presence overlay
+│   │   ├── RoomEditor.js       # Collaborative code editor
+│   │   ├── RoomMembers.js      # Online member list
+│   │   ├── RoomNotes.js        # Shared markdown notes
+│   │   ├── RoomSummaryButton.js  # Generate/view summary button
+│   │   └── RoomSummaryModal.js   # Markdown summary modal with backdrop blur
+│   ├── dashboard/
+│   │   ├── LeftSidebar.js      # Feed tabs + rooms nav
+│   │   └── RightSidebar.js     # AI copilot + rooms promo widgets
 │   ├── AIDraftAssistant.js     # "Draft with AI" prompt box + Sarvam AI call
 │   ├── CodeEditorModal.js      # Modal for inserting formatted code blocks
 │   ├── CodeReview.js           # Code review UI component
@@ -117,7 +148,10 @@ DevConnect-AI/
 ├── context/
 │   └── AuthContext.js          # Firebase auth state (Google + GitHub login/logout)
 ├── lib/
-│   └── firebase.js             # Firebase app initialization
+│   ├── firebase.js             # Firebase client initialization
+│   ├── firebase-admin.js       # Firebase server-side initialization (for API routes)
+│   ├── rooms.js                # Room CRUD + presence + summary helpers
+│   └── webrtc.js               # WebRTC signaling + media stream management
 ├── .env.local                  # Environment variables (not committed)
 ├── .gitignore
 ├── package.json
@@ -259,6 +293,21 @@ All Firebase values are available in **Firebase Console → Project Settings →
 
 ---
 
+## 🔥 Required Firestore Collections
+
+The rooms feature uses these Firestore collections (created automatically on first use):
+
+| Collection | Purpose |
+|---|---|
+| `rooms/{roomId}` | Room metadata — title, description, language, members, createdBy, createdAt |
+| `rooms/{roomId}/messages/{messageId}` | Real-time chat messages |
+| `rooms/{roomId}/notes/{noteId}` | Shared markdown notes (one active note per room) |
+| `rooms/{roomId}/presence/{uid}` | Live presence — last heartbeat, cursor position, media state |
+
+No manual collection setup is required — Firestore creates these on first write.
+
+---
+
 ## ▶️ Running the App
 
 | Command | Description |
@@ -278,9 +327,12 @@ All Firebase values are available in **Firebase Console → Project Settings →
 | `/login` | Login with Google or GitHub | No |
 | `/signup` | Signup with Google or GitHub | No |
 | `/dashboard` | Main community feed | ✅ Yes |
+| `/rooms` | Collaboration rooms hub — list/create rooms | ✅ Yes |
+| `/rooms/[roomId]` | Room workspace — chat, notes, editor, voice/video | ✅ Yes |
 | `/profile` | User profile page | ✅ Yes |
 | `/settings` | Settings page | ✅ Yes |
 | `/api/ai-draft` | Server-side Sarvam AI draft endpoint | N/A (API route) |
+| `/api/rooms/[roomId]/summary` | AI room summary generation endpoint | N/A (API route) |
 
 > Protected routes automatically redirect unauthenticated users to `/login`.
 
@@ -305,9 +357,14 @@ This project is under active development. Here's what's done and what's still in
 | Markdown rendering for posts (headings, lists, code blocks) | ✅ Done |
 | In-post code editor / inserter | ✅ Done |
 | **Draft with AI Assistant** (Sarvam AI, question-only mode) | ✅ Done |
+| Collaboration Rooms — hub + workspace shell | ✅ Done |
+| Room chat (real-time, Firestore onSnapshot) | ✅ Done |
+| Room shared notes (markdown, auto-save) | ✅ Done |
+| Room collaborative code editor | ✅ Done |
+| Room voice/video/screen-share (WebRTC) | ✅ Done |
+| Room presence (members, cursors, heartbeat) | ✅ Done |
+| AI Room Summaries (Sarvam AI + markdown modal) | ✅ Done |
 | AI Code Review (Copilot) | 🔄 In Progress |
-| User profile page | 🔜 Planned |
-| Trending / Questions / Collaborations / Saved Posts (functional) | 🔜 Planned |
 
 ---
 
