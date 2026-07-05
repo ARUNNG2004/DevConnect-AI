@@ -11,7 +11,7 @@ import {
   updateProfile,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db, googleProvider, githubProvider } from "../lib/firebase";
+import { auth, db, googleProvider, githubProvider, isFirebaseConfigured } from "../lib/firebase";
 import { identifyUser } from "../lib/posthog/helpers";
 import posthog from "posthog-js";
 
@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const saveUserToFirestore = async (userResult) => {
-    if (!userResult) return;
+    if (!userResult || !db) return;
     const userRef = doc(db, "users", userResult.uid);
     await setDoc(
       userRef,
@@ -49,6 +49,9 @@ export const AuthProvider = ({ children }) => {
 
   const loginWithGoogle = async () => {
     try {
+      if (!auth || !googleProvider) {
+        throw new Error("Firebase is not configured for local authentication.");
+      }
       const result = await signInWithPopup(auth, googleProvider);
       await saveUserToFirestore(result.user);
       return result.user;
@@ -61,6 +64,9 @@ export const AuthProvider = ({ children }) => {
 
   const loginWithGithub = async () => {
     try {
+      if (!auth || !githubProvider) {
+        throw new Error("Firebase is not configured for local authentication.");
+      }
       const result = await signInWithPopup(auth, githubProvider);
       await saveUserToFirestore(result.user);
       return result.user;
@@ -73,6 +79,9 @@ export const AuthProvider = ({ children }) => {
 
   const signupWithEmail = async (email, password, displayName) => {
     try {
+      if (!auth) {
+        throw new Error("Firebase is not configured for local authentication.");
+      }
       const result = await createUserWithEmailAndPassword(auth, email, password);
       if (displayName?.trim()) {
         await updateProfile(result.user, { displayName: displayName.trim() });
@@ -86,6 +95,9 @@ export const AuthProvider = ({ children }) => {
 
   const loginWithEmail = async (email, password) => {
     try {
+      if (!auth) {
+        throw new Error("Firebase is not configured for local authentication.");
+      }
       const result = await signInWithEmailAndPassword(auth, email, password);
       await saveUserToFirestore(result.user);
       return result.user;
@@ -97,6 +109,9 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
   try {
+    if (!auth || !db) {
+      return;
+    }
     if (user) {
       await setDoc(
         doc(db, "users", user.uid),
@@ -116,6 +131,9 @@ export const AuthProvider = ({ children }) => {
 
   const resetPassword = async (email) => {
     try {
+      if (!auth) {
+        throw new Error("Firebase is not configured for local authentication.");
+      }
       await sendPasswordResetEmail(auth, email);
     } catch (error) {
       console.error("Password reset error:", error);
@@ -124,6 +142,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    if (!isFirebaseConfigured || !auth) {
+      setUser(null);
+      setLoading(false);
+      return undefined;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         identifyUser(currentUser.uid, {
