@@ -433,7 +433,7 @@ const S = {
     flexShrink: 0,
   },
   mockupMeta: { flex: 1, display: "flex", flexDirection: "column", gap: 4, minWidth: 0 },
-  mockupLineSm: { height: 8, background: "rgba(255,255,255,0.08)", borderRadius: 2 },
+  mockupLineSm: { height: 8, background: "var(--mockup-line)", borderRadius: 2 },
   mockupCodeCard: {
     fontFamily: "'JetBrains Mono', monospace",
     background: "var(--bg-primary)",
@@ -441,7 +441,7 @@ const S = {
     borderRadius: 8,
     padding: 12,
     fontSize: "0.8rem",
-    color: "#e2e8f0",
+    color: "var(--code-text)",
     overflowX: "auto",
   },
   mockupCodeCardMobile: {
@@ -890,11 +890,11 @@ export default function Home() {
                   </div>
 
                   <div style={{ ...S.mockupCodeCard, ...(isMobile ? S.mockupCodeCardMobile : {}) }}>
-                    <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
+                    <span style={{ color: "var(--code-comment)", fontStyle: "italic" }}>
                       {"// App Router re-renders infinitely on state push"}
                     </span>
                     <br />
-                    <span style={{ color: "#f43f5e" }}>const</span>
+                    <span style={{ color: "var(--code-keyword)" }}>const</span>
                     {" handleFilter = (filter) => {"}
                     <br />
                     &nbsp;&nbsp;{"router."}
