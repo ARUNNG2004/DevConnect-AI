@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 const FEED_TABS = [
   { id: "latest", label: "Latest Feed", icon: "▦" },
   { id: "trending", label: "Trending", icon: "📈" },
@@ -113,6 +115,8 @@ export default function LeftSidebar({
   onShowFeatureTour,
   streak = 0,
 }) {
+  const router = useRouter();
+
   return (
     <aside style={S.leftSidebar}>
       <ul style={S.sidebarNavList}>
@@ -136,6 +140,12 @@ export default function LeftSidebar({
             </button>
           </li>
         ))}
+
+        <li>
+          <button style={S.sidebarNavItemLink} onClick={() => router.push("/rooms")}>
+            <span>🚪</span><span>Rooms</span>
+          </button>
+        </li>
 
         <li>
           <button id="saved-posts-nav" style={S.sidebarNavItemLink} onClick={onShowSavedPosts}>
