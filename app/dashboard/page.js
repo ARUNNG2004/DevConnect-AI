@@ -650,9 +650,22 @@ export default function Dashboard() {
 
   // ── Comment CRUD ──────────────────────────────────────────────────────────
   const toggleComments = (postId) => {
-    setOpenCommentsFor((prev) => (prev === postId ? null : postId));
+    const nextState = openCommentsFor === postId ? null : postId;
+    setOpenCommentsFor(nextState);
     setCommentDraft("");
     setEditingComment(null);
+
+    if (nextState && user) {
+      fetch("/api/posts/view", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId: user.uid, postId }),
+      }).catch((err) => {
+        console.error("Failed to update recently viewed:", err);
+      });
+    }
   };
 
   const handleAddComment = async (post) => {
