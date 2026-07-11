@@ -54,3 +54,57 @@ export async function POST(req) {
     );
   }
 }
+
+export async function GET(req) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return Response.json(
+        { error: "userId is required" },
+        { status: 400 }
+      );
+    }
+
+    const db = getServerDb();
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
+      return Response.json({ posts: [] });
+    }
+
+    const userData = userSnap.data();
+    const recentlyViewedIds = userData.recentlyViewed || [];
+
+    if (recentlyViewedIds.length === 0) {
+      return Response.json({ posts: [] });
+    }
+
+    // Fetch details of all recently viewed posts
+    const postsPromises = recentlyViewedIds.map(async (postId) => {
+      try {
+        const postDoc = await getDoc(doc(db, "posts", postId));
+        if (postDoc.exists()) {
+          return { id: postDoc.id, ...postDoc.data() };
+        }
+        return null;
+      } catch (err) {
+        console.error(`Error fetching post ${postId}:`, err);
+        return null;
+      }
+    });
+
+    const postsResult = await Promise.all(postsPromises);
+    const validPosts = postsResult.filter(Boolean);
+
+    return Response.json({ posts: validPosts });
+  } catch (error) {
+    console.error("Error in GET /api/posts/view:", error);
+    return Response.json(
+      { error: "Internal server error", details: error.message },
+      { status: 500 }
+    );
+  }
+}
+

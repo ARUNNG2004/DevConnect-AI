@@ -110,6 +110,7 @@ export default function Dashboard() {
   const [showSavedPosts, setShowSavedPosts] = useState(false);
   const [showFeatureTour, setShowFeatureTour] = useState(false);
   const [streak, setStreak] = useState(0);
+  const [recentlyViewedPosts, setRecentlyViewedPosts] = useState([]);
 
   // ── Post editing state ───────────────────────────────────────────────────
   const [editingId, setEditingId] = useState(null);
@@ -146,14 +147,14 @@ export default function Dashboard() {
     try {
       const seen = localStorage.getItem(FEATURE_TOUR_KEY);
       if (!seen) setShowFeatureTour(true);
-    } catch {}
+    } catch { }
   }, []);
 
   const closeFeatureTour = () => {
     setShowFeatureTour(false);
     try {
       localStorage.setItem(FEATURE_TOUR_KEY, "true");
-    } catch {}
+    } catch { }
   };
 
   // ── Firebase: posts ───────────────────────────────────────────────────────
@@ -225,6 +226,36 @@ export default function Dashboard() {
     );
     return () => unsubscribe();
   }, [user]);
+
+  // ── Fetch recently viewed posts from API ────────────────────────────────────
+  useEffect(() => {
+    if (!user || activeTab !== "recently-viewed") return;
+
+    let isMounted = true;
+    const fetchRecentlyViewed = async () => {
+      try {
+        const res = await fetch(`/api/posts/view?userId=${user.uid}`);
+        if (!res.ok) throw new Error("Failed to fetch recently viewed posts");
+        const data = await res.json();
+        if (isMounted) {
+          setRecentlyViewedPosts(data.posts || []);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchRecentlyViewed();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, activeTab]);
+
+  const handleNavigateToPost = useCallback((postId) => {
+    window.location.hash = `#post-${postId}`;
+    window.dispatchEvent(new CustomEvent("dashboard-scroll-request"));
+  }, []);
 
   // ── Firebase: active members ──────────────────────────────────────────────
   useEffect(() => {
@@ -509,8 +540,8 @@ export default function Dashboard() {
         postData.pollVotes = {};
       }
       await addDoc(collection(db, "posts"), postData);
-      try { captureEvent(EVENTS.POST_CREATED, { postType, tagCount: selectedTags.length }); } catch (_) {}
-      try { await updateStreak(user.uid); } catch (_) {}
+      try { captureEvent(EVENTS.POST_CREATED, { postType, tagCount: selectedTags.length }); } catch (_) { }
+      try { await updateStreak(user.uid); } catch (_) { }
       // reset all composer fields on success
       setContent("");
       setSelectedTags([]);
@@ -662,6 +693,13 @@ export default function Dashboard() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ userId: user.uid, postId }),
+      }).then(() => {
+        if (activeTab === "recently-viewed") {
+          fetch(`/api/posts/view?userId=${user.uid}`)
+            .then((res) => res.json())
+            .then((data) => setRecentlyViewedPosts(data.posts || []))
+            .catch((err) => console.error(err));
+        }
       }).catch((err) => {
         console.error("Failed to update recently viewed:", err);
       });
@@ -831,6 +869,8 @@ export default function Dashboard() {
     posts,
     filteredPosts,
     trendingPosts,
+    recentlyViewedPosts,
+    onNavigateToPost: handleNavigateToPost,
     activeTab,
     setActiveTab,
     highlightedPostId,

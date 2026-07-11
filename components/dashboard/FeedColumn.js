@@ -2,10 +2,12 @@
 
 import PostCard from "./PostCard";
 import PostComposer from "./PostComposer";
+import RecentlyViewed from "./RecentlyViewed";
 
 const FEED_TABS = [
   { id: "latest", label: "Latest Feed", icon: "▦" },
   { id: "trending", label: "Trending", icon: "📈" },
+  { id: "recently-viewed", label: "Recently Viewed", icon: "🕒" },
   { id: "questions", label: "Questions", icon: "❔" },
   { id: "collaboration", label: "Collaborate", icon: "👥" },
 ];
@@ -73,6 +75,8 @@ export default function FeedColumn({
   posts,
   filteredPosts,
   trendingPosts,
+  recentlyViewedPosts = [],
+  onNavigateToPost,
   activeTab,
   setActiveTab,
   isMobile,
@@ -198,6 +202,18 @@ export default function FeedColumn({
         </div>
       )}
 
+      {activeTab === "recently-viewed" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", padding: "0 2px" }}>
+            🕒 Posts you have recently viewed
+          </div>
+          <RecentlyViewed
+            posts={recentlyViewedPosts}
+            onNavigateToPost={onNavigateToPost}
+          />
+        </div>
+      )}
+
       {activeTab === "questions" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", padding: "0 2px" }}>
@@ -237,16 +253,16 @@ export default function FeedColumn({
       )}
 
       {activeTab === "latest" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {filteredPosts.length === 0 ? (
-              <p style={{ color: "var(--text-muted)" }}>No posts found for this tag.</p>
-            ) : (
-              filteredPosts.map((post, i) => (
-                <PostCard key={post.id} post={post} postIndex={i} isHighlighted={highlightedPostId === post.id} {...postCardProps} />
-              ))
-            )}
-          </div>
-        )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {filteredPosts.length === 0 ? (
+            <p style={{ color: "var(--text-muted)" }}>No posts found for this tag.</p>
+          ) : (
+            filteredPosts.map((post, i) => (
+              <PostCard key={post.id} post={post} postIndex={i} isHighlighted={highlightedPostId === post.id} {...postCardProps} />
+            ))
+          )}
+        </div>
+      )}
     </section>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 const FEED_TABS = [
   { id: "latest", label: "Latest Feed", icon: "▦" },
   { id: "trending", label: "Trending", icon: "📈" },
+  { id: "recently-viewed", label: "Recently Viewed", icon: "🕒" },
   { id: "questions", label: "Questions", icon: "❔" },
   { id: "collaboration", label: "Collaborate", icon: "👥" },
 ];
