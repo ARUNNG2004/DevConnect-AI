@@ -829,6 +829,10 @@ const goToPost = useCallback((post) => {
           👥
         </Link>
 
+        <Link href="/hackathons" style={S.btnIcon} title="Hackathon Hub">
+          🏆
+        </Link>
+
         {/* Notifications bell — shows a blue dot when there are unread items */}
         <Notifications isMobile={isMobile} />
 
